@@ -34,5 +34,8 @@
 #include "constrDim_selected.xpm"
 #include "constrSymmetric.xpm"
 #include "constrSymmetric_selected.xpm"
+#include "constrMidpoint.xpm"
+#include "constrMidpoint_selected.xpm"
+
 
 #endif // XPMS_H_INCLUDED
