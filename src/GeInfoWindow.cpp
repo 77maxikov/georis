@@ -2,13 +2,25 @@
 #include "../res/xpms.h"
 #include "controller.h"
 #include <FL/fl_ask.H>
+#include <FL/Fl_Output.H>
+#include <FL/Fl_Box.H>
+#include <cassert>
 
 GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,w,h,l)
 {
     _controller = nullptr;
 
-    m_pBrowserSelected = new Fl_Multi_Browser(3,3,w-10,60);
-    m_pBrowserComCon = new Fl_Multi_Browser(3,75,w-10,60);
+
+    Fl_Box *la = new Fl_Box(3,3,w-6,14);
+    la->label("Объекты");
+    la->labelsize(10);
+    m_pBrowserSelected = new Fl_Multi_Browser(3,19,w-6,60);
+
+    la = new Fl_Box(3,81,w-6,14);
+    la->label("Связи");
+    la->labelsize(10);
+
+    m_pBrowserComCon = new Fl_Multi_Browser(3,97,w-6,60);
 
     m_pBrowserSelected->textsize(10);
     m_pBrowserComCon->textsize(10);
@@ -17,7 +29,7 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
     resizable(*m_pBrowserComCon);
 
 
-    m_pActionToolbar = new Fl_Toolbar(2,140);
+    m_pActionToolbar = new Fl_Toolbar(3,166);
     m_pActionToolbar->size(32,32);
     m_pActionToolbar->type(Fl_Pack::VERTICAL);
 
@@ -25,6 +37,7 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
     _constrbuttons[georis::ConstraintType::CT_DIMENSION] = m_pActionToolbar->AddImageButton("Размер",new Fl_Pixmap(constrDim_xpm),new Fl_Pixmap(constrDim_selected_xpm), cbConstrDim);
     _constrbuttons[georis::ConstraintType::CT_VERTICAL] = m_pActionToolbar->AddImageButton("Вертикально",new Fl_Pixmap(constrVertical_xpm),new Fl_Pixmap(constrVertical_selected_xpm), cbConstrVertical);
     _constrbuttons[georis::ConstraintType::CT_HORIZONTAL] = m_pActionToolbar->AddImageButton("Горизонтально",new Fl_Pixmap(constrHorizontal_xpm),new Fl_Pixmap(constrHorizontal_selected_xpm), cbConstrHorizontal);
+    _constrbuttons[georis::ConstraintType::CT_MIDPOINT] = m_pActionToolbar->AddImageButton("Середина",new Fl_Pixmap(constrMidpoint_xpm),new Fl_Pixmap(constrMidpoint_selected_xpm), cbConstrMidpoint);
     _constrbuttons[georis::ConstraintType::CT_PARALLEL] = m_pActionToolbar->AddImageButton("Параллельно",new Fl_Pixmap(constrParallel_xpm),new Fl_Pixmap(constrParallel_selected_xpm), cbConstrParallel);
     _constrbuttons[georis::ConstraintType::CT_ORTHO] = m_pActionToolbar->AddImageButton("Перпендикулярно",new Fl_Pixmap(constrOrtho_xpm),new Fl_Pixmap(constrOrtho_selected_xpm), cbConstrOrtho);
     _constrbuttons[georis::ConstraintType::CT_COINCIDENT] = m_pActionToolbar->AddImageButton("Принадлежит",new Fl_Pixmap(constrCoincident_xpm),new Fl_Pixmap(constrCoincident_selected_xpm), cbConstrCoincident);
@@ -46,18 +59,32 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
 }
 
 void GeInfoWindow::setAvailConstraints(const std::vector<georis::ConstraintType> &constr){
+    if (constr.empty()) {
+        hide();
+        redraw();
+        return;
+    }
+    else show();
 
     m_pActionToolbar->show();
     for (auto bu : _constrbuttons)
         bu.second->hide();
-    for (auto ct: constr)
+    for (auto ct: constr){
+        assert(_constrbuttons.find(ct) != _constrbuttons.end() );
         _constrbuttons[ct]->show();
+    }
 
     redraw();
 }
 
-void GeInfoWindow::setSelectedObjs(const std::map<UID,std::string> &objNames){
+void GeInfoWindow::setSelectedObjs(const std::map<UID,std::string> &objNames){    
     m_pBrowserSelected->clear();
+    if (objNames.empty()){
+        hide();
+        return;
+    }
+    else
+        show();
     for (auto it : objNames)
         m_pBrowserSelected->add(it.second.c_str());
 }
@@ -74,6 +101,10 @@ void GeInfoWindow::cbConstrVertical(Fl_Widget*w, void*d) {
 void GeInfoWindow::cbConstrHorizontal(Fl_Widget*w, void*d) {
     if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_HORIZONTAL);
     if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->redraw();
+}
+void GeInfoWindow::cbConstrMidpoint(Fl_Widget*w, void*d) {
+    if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_MIDPOINT);
+    if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->damage();
 }
 
 void GeInfoWindow::cbConstrParallel(Fl_Widget*w, void*d) {

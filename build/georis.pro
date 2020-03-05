@@ -17,8 +17,7 @@ INCLUDEPATH += ../include \
     ../externals/tinyxml2/include \
 	/usr/include/eigen3
 
-SOURCES += ../src/test.cpp \
-   ../externals/tinyxml2/src/tinyxml2.cpp \
+SOURCES += ../src/test.cpp \   
    ../src/GeFLTKVisualizer.cpp \
    ../src/GeGlWindow.cpp \
    ../src/GeInfoWindow.cpp \
@@ -49,7 +48,8 @@ SOURCES += ../src/test.cpp \
    ../src/objutils.cpp \
    ../src/optim/SolverLM.cpp \
    ../src/optim/SolverNG.cpp \
-   ../src/uid.cpp
+   ../src/uid.cpp \
+   ../externals/tinyxml2/src/tinyxml2.cpp
 
 
 HEADERS  += \

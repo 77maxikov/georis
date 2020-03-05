@@ -12,9 +12,12 @@ GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Windo
     resizable(this);
 
     Fl_Group * group = new Fl_Group(20,40,W-20,H-20);
-    _infowin = new GeInfoWindow(3,33,100,600);
+
+    _infowin = new GeInfoWindow(5,40,100,600);
+    _infowin->hide();
 
     _glWindow = new GeGlWindow(_infowin->w() + 5,40,W - (_infowin->w() + 5),H-40);
+    //_glWindow = new GeGlWindow(5 ,40, W - 5,H-40);
     resizable(_glWindow);
     _glWindow->hide();
 
@@ -84,6 +87,8 @@ void GeFLTKVisualizer::setInputMode(InputMode mode){
 void GeFLTKVisualizer::resize(int x, int y, int w, int h){
 
     _glWindow->resize(_infowin->w()+5,40,w - (_infowin->w() + 5),h-40);
+    //_glWindow->resize(5,40,w - 5,h-40);
+
 }
 int GeFLTKVisualizer::processKeyboard(int key) {
 MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
@@ -252,6 +257,7 @@ void GeFLTKVisualizer::setSelectedObjs(const std::map<UID,std::string> &objNames
     _infowin->setSelectedObjs(objNames);
 }
 void GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
+
     _infowin->setSelectedConstraints(constrNames);
 }
 

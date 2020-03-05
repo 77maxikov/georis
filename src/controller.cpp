@@ -2,7 +2,9 @@
 #include <stack>
 #include <iostream>
 #include <fstream>
-#include <Eigen/Sparse>
+#include <limits>
+#include <algorithm>
+#include <cassert>
 
 #include "controller.h"
 #include "iosvgx.h"
@@ -40,7 +42,7 @@ void georis::Controller::setUI(IVisualizer *vis) {
     showSelectionInfo();
 }
 void georis::Controller::updateView() {
-    MOOLOG << "GeosController::updateView: " << m_objs.size() << " objects to update" << std::endl;
+    //MOOLOG << "GeosController::updateView: " << m_objs.size() << " objects to update" << std::endl;
     for (auto it: m_objs){
         ObjectType objtype;
         std::vector<double> param;
@@ -82,6 +84,10 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
     }
     MOOLOG << "Controller::addObject added parent with UID " << uid << std::endl;
 
+    std::vector<UID> ids;
+    m_core.getObjChilds(uid,ids);
+
+
     const size_t bufsize = 64;
     static char buf[bufsize];
 
@@ -117,6 +123,7 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         res = m_core.getObjType(chuid,ot);
 
         assert( res == RC_OK );
+
         if ( ot == OT_POINT ){
             _lastObjNums[OT_POINT]++;
             snprintf(buf,bufsize,"Точка%d",_lastObjNums[OT_POINT]);
@@ -126,47 +133,46 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         MOOLOG << "Controller::addObject added child with UID " << chuid << std::endl;
     }
     // Add implicit constraints
-    /*
-    if ( _memHighlights[0] != NOUID ){
+
+    if ( m_memHighlights[0] != NOUID ){
         switch(type){
         case OT_POINT:{
             std::vector<UID> cobjs;
             cobjs.push_back(uid);
-            cobjs.push_back(_memHighlights[0]);
-            _core.addConstraint(CT_DISTANCE,cobjs,0);
+            cobjs.push_back(m_memHighlights[0]);
+            addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         case OT_SEGMENT:{
             std::vector<UID> cobjs;
             cobjs.push_back(ids[0]);
-            cobjs.push_back(_memHighlights[0]);
-            _core.addConstraint(CT_DISTANCE,cobjs,0);
+            cobjs.push_back(m_memHighlights[0]);
+            addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         case OT_CIRCLE:{
             std::vector<UID> cobjs;
             cobjs.push_back(ids[0]);
-            cobjs.push_back(_memHighlights[0]);
-            _core.addConstraint(CT_DISTANCE,cobjs,0);
+            cobjs.push_back(m_memHighlights[0]);
+            addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         default:
             ;
         }
     }
-*/
-    /*
-    if ( _memHighlights[1] != NOUID ){
+
+    if ( m_memHighlights[1] != NOUID ){
         switch(type){
         case OT_SEGMENT:{
             std::vector<UID> cobjs;
             cobjs.push_back(ids[1]);
-            cobjs.push_back(_memHighlights[1]);
-            _core.addConstraint(CT_DISTANCE,cobjs,0);
+            cobjs.push_back(m_memHighlights[1]);
+            addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         case OT_CIRCLE:{
-            /*
+/*
             GeoObjInfo info;
             _core.queryObjInfo(_memHighlights[1],info);
             if ( info.type == OT_POINT ){
@@ -175,16 +181,87 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
                 cobjs.push_back(_memHighlights[1]);
                 _core.addConstraint(CT_DISTANCE,cobjs,0);
             }
+            */
             break;
         }
         default:
             ;
         }
     }
-*/
+
     m_memHighlights[0] = NOUID;
     m_memHighlights[1] = NOUID;
 }
+
+void georis::Controller::addConstraint(ConstraintType type, const std::vector<UID> &objects, double param, const std::string &name){
+    UID uid = NOUID;
+    RESCODE res = m_core.addConstraint(type,objects,param,&uid);
+    if ( res != RC_OK ){
+        MOOLOG << "Controller::addConstraint unsuccesful" << std::endl;
+        return;
+    }
+    MOOLOG << "Controller::addConstraint added with UID " << uid << std::endl;
+
+    const size_t bufsize = 64;
+    static char buf[bufsize];
+
+    if (name.empty()) { // Create object's name
+        _lastConstrNums[type]++;
+        switch(type) {
+        case CT_FIX:
+            snprintf(buf,bufsize,"Зафиксировано%d",_lastConstrNums[type]);
+            break;
+        case CT_EQUAL:
+            snprintf(buf,bufsize,"Равно%d",_lastConstrNums[type]);
+            break;
+        case CT_VERTICAL:
+            snprintf(buf,bufsize,"Вертикально%d",_lastConstrNums[type]);
+            break;
+        case CT_HORIZONTAL:
+            snprintf(buf,bufsize,"Горизонтально%d",_lastConstrNums[type]);
+            break;
+        case CT_DISTANCE:
+            snprintf(buf,bufsize,"Расстояние%d",_lastConstrNums[type]);
+            break;
+        case CT_ANGLE:
+            snprintf(buf,bufsize,"Угол%d",_lastConstrNums[type]);
+            break;
+        case CT_PARALLEL:
+            snprintf(buf,bufsize,"Параллельно%d",_lastConstrNums[type]);
+            break;
+        case CT_ORTHO:
+            snprintf(buf,bufsize,"Перпендикулярно%d",_lastConstrNums[type]);
+            break;
+        case CT_TANGENT:
+            snprintf(buf,bufsize,"Касательно%d",_lastConstrNums[type]);
+            break;
+        case CT_COINCIDENT:
+            snprintf(buf,bufsize,"Принадлежит%d",_lastConstrNums[type]);
+            break;
+        case CT_MIDPOINT:
+            snprintf(buf,bufsize,"Середина%d",_lastConstrNums[type]);
+            break;
+        case CT_COLLINEAR:
+            snprintf(buf,bufsize,"Колинеарно%d",_lastConstrNums[type]);
+            break;
+        case CT_DIMENSION:
+            snprintf(buf,bufsize,"Размер%d",_lastConstrNums[type]);
+            break;
+        case CT_SYMMETRIC:
+            snprintf(buf,bufsize,"Симметрично%d",_lastConstrNums[type]);
+            break;
+        case CT_CONCENTRIC:
+            snprintf(buf,bufsize,"Концентрично%d",_lastConstrNums[type]);
+        }
+
+        m_constrs[uid].name = buf;
+    }
+    else
+        m_constrs[uid].name = name;
+    m_constrs[uid].status = 0;
+
+}
+
 void georis::Controller::resetSelection() {
     MOOLOG << "Controller::resetSelection" << std::endl;
     for (auto && it : m_objs ){
@@ -335,8 +412,7 @@ void georis::Controller::constrainSelected(ConstraintType type,double param) {
             subob.insert(subob.end(),sub.begin(),sub.end());
     }
     std::set_difference(selected.begin(),selected.end(),subob.begin(),subob.end(),std::inserter(filtered,filtered.begin()));
-    m_core.addConstraint(type,filtered,param);
-
+    addConstraint(type,filtered,param);
     resetSelection();
     showSelectionInfo();
 }
@@ -404,7 +480,7 @@ void georis::Controller::showSelectionInfo() {
         namedObjs[it] = m_objs[it].name;
     }
 
-    MOOLOG << "GeController::showSelectionInfo: total selected "<< selected.size() << std::endl;
+    MOOLOG << "Controller::showSelectionInfo: total selected "<< selected.size() << std::endl;
     MOOLOG << "                                          nPoints = "<< nselPoints << " nLines = " << nselLines << " nCircls = " << nselCircls << std::endl;
 
     m_ui->setSelectedObjs(namedObjs);
@@ -459,8 +535,15 @@ void georis::Controller::showSelectionInfo() {
                 constr.push_back(CT_TANGENT);
             }
         }
-        if ( nselPoints == 1 &&  ( (nselLines == 1 && nselCircls == 0) || (nselCircls == 1 && nselLines == 0) ) )
-            constr.push_back(CT_COINCIDENT);
+        if ( nselPoints == 1 ){
+            if ( nselLines == 1 && nselCircls == 0 ){
+                constr.push_back(CT_COINCIDENT);
+                constr.push_back(CT_MIDPOINT);
+            }
+            if ( nselCircls == 1 && nselLines == 0) {
+                constr.push_back(CT_COINCIDENT);
+            }
+        }
         if ( nselPoints == 2 && nselLines == 1 && nselCircls == 0 )
             constr.push_back(CT_SYMMETRIC);
         if ( nselPoints == 0 && nselLines == 1 && nselCircls == 1 )
@@ -511,7 +594,7 @@ void georis::Controller::saveTo(const std::string &fname){
                 MOOLOG << "Controller::saveTo: no obj uid " << chuid << std::endl;
                 return;
             }
-            res = writer.saveObject(chuid,ot,param,uid);
+            res = writer.saveObject(chuid,m_objs[chuid].name,ot,param,uid);
             if ( res != RC_OK ){
                 MOOLOG << "Controller::saveTo: can't save obj with uid " << chuid << std::endl;
                 return;
@@ -522,7 +605,7 @@ void georis::Controller::saveTo(const std::string &fname){
             MOOLOG << "Controller::saveTo: no obj uid " << uid << std::endl;
             return;
         }
-        res = writer.saveObject(uid,ot,param);
+        res = writer.saveObject(uid,m_objs[uid].name,ot,param);
         if ( res != RC_OK ){
             MOOLOG << "Controller::saveTo: can't save obj with uid " << uid << std::endl;
             return;
@@ -543,10 +626,10 @@ void georis::Controller::saveTo(const std::string &fname){
         case CT_ANGLE:
         case CT_DISTANCE:
         case CT_DIMENSION:
-            writer.saveConstraint(construid,ct,objuids,&para);
+            writer.saveConstraint(construid,m_constrs[construid].name,ct,objuids,&para);
             break;
         default:
-            writer.saveConstraint(construid,ct,objuids);
+            writer.saveConstraint(construid,m_constrs[construid].name,ct,objuids);
         }
     }
 }
@@ -564,7 +647,8 @@ void georis::Controller::loadFrom(const std::string &fname){
     UID uid = NOUID,uidpar = NOUID;
     ObjectType ot = OT_NONE;
     std::vector<double> params;
-    while ( (res = reader.loadObject(uid,ot,params,uidpar) != RC_NO_OBJ )){
+    std::string name;
+    while ( (res = reader.loadObject(uid,name,ot,params,uidpar) != RC_NO_OBJ )){
         res = m_core.addObject(ot,params,&uid);
 
         if ( res != RC_OK ){
@@ -578,8 +662,9 @@ void georis::Controller::loadFrom(const std::string &fname){
             chuids.push_back(uid);
 
             UID par2load = uidpar;
+            std::string namepar(name);
             do {
-                if ( (res = reader.loadObject(uid,ot,params,uidpar)) != RC_OK ){
+                if ( (res = reader.loadObject(uid,name,ot,params,uidpar)) != RC_OK ){
                     // ACHTUNG !! Not finished reading of parent and siblings
                     MOOLOG << "Controller::loadFrom:  not finished reading of parent " << par2load << " and sibling objs from file" << std::endl;
                     return;
@@ -590,6 +675,8 @@ void georis::Controller::loadFrom(const std::string &fname){
                         MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
                         return;
                     }
+                    EInfo info = {MODE_NORMAL,name};
+                    m_objs[uid] = info;
                     // push child objs
                     chuids.push_back(uid);
                 }
@@ -600,7 +687,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                         MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
                         return;
                     }
-                    EInfo info = {MODE_NORMAL,""};
+                    EInfo info = {MODE_NORMAL,namepar};
                     m_objs[uid] = info;
                     break;
                 }
@@ -613,7 +700,7 @@ void georis::Controller::loadFrom(const std::string &fname){
             while ( true );
         }
         else {
-            EInfo info = {MODE_NORMAL,""};
+            EInfo info = {MODE_NORMAL,name};
             m_objs[uid] = info;
         }
     }
@@ -621,12 +708,14 @@ void georis::Controller::loadFrom(const std::string &fname){
     std::vector<UID> contrainedObjUIDs;
     ConstraintType ct ;
     double param = 0;
-    while ( (res = reader.loadConstraint(uid,ct,contrainedObjUIDs,param) != RC_NO_OBJ )){
-        //res = m_core.addConstraint( uid,ct,contrainedObjUIDs,param);
+    while ( (res = reader.loadConstraint(uid,name,ct,contrainedObjUIDs,param) != RC_NO_OBJ )){
+        res = m_core.addConstraint(ct,contrainedObjUIDs,param,&uid);
         if ( res != RC_OK ){
             MOOLOG << "Controller::loadFrom: Can't add constraint " << uid << std::endl;
             return;
         }
+        EInfo info = {MODE_NORMAL,name};
+        m_constrs[uid] = info;
     }
     updateView();
 }

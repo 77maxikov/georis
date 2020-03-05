@@ -59,7 +59,7 @@ private:
 
     int backupState();
     int restoreState();
-    int tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double param,UID *puid);
+    RESCODE tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double param,UID *puid);
     void groupObj(const std::vector<UID> &uids, std::map<ObjectType,std::vector<objInfo*> > &grouped);
 	int solve();
 

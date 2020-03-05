@@ -51,6 +51,8 @@ private:
 
     std::map<ObjectType,int> _lastObjNums;
 
+    std::map<ConstraintType,int> _lastConstrNums;
+
     std::map<UID,EInfo> m_objs;
     std::map<UID,EInfo> m_constrs;
 
@@ -59,6 +61,8 @@ private:
     void findObj(unsigned stateMask,std::vector<UID> &res);
 
     void showSelectionInfo();
+
+    void addConstraint(ConstraintType type, const std::vector<UID> &objects,double param = 0,const std::string &name = std::string());
 
     static const double _sel_precision;
 };

@@ -331,7 +331,10 @@ int georis::Core::restoreState(){
 	return 0;
 }
 
-int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &uids,double param,UID *puid) {
+RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &uids,double param,UID *puid) {
+    if ( puid != nullptr && *puid != NOUID && _constraints.find(*puid) != _constraints.end() ){
+        return RC_INVALIDARG;
+    }
 	bool added = false;
 
     switch (type) {
@@ -375,7 +378,19 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 cinfo.constrs[0].cparam.push_back(pt1->y);
                 cinfo.constrs[0].cparam.push_back(&_params.back());
 
-                UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
+
                 _constraints[uid] = cinfo;
 
                 cinfo.objs = uids;
@@ -396,10 +411,21 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
 				cinfo.constrs[1].cparam.push_back(pt0->y);
 				cinfo.constrs[1].cparam.push_back(pt1->y);
 
-                UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
                 _constraints[uid] = cinfo;
 
-                cinfo.objs = uids;
+
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
 
@@ -424,10 +450,20 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
             cinfo.constrs[0].cparam.push_back(line->end->y);
             cinfo.constrs[0].cparam.push_back(&_params.back());
 
-			UID uid = UIDGen::instance()->generate();
+            cinfo.objs = uids;
+
+            UID uid = NOUID;
+            if ( puid != nullptr ){
+                if (*puid != NOUID )
+                    uid = *puid;
+                else
+                    *puid = uid = UIDGen::instance()->generate();
+            }
+            else
+                uid = UIDGen::instance()->generate();
+
 			_constraints[uid] = cinfo;
 
-			cinfo.objs = uids;
 			_objects[uids[0]].constrs.push_back(uid);
 			_objects[uids[1]].constrs.push_back(uid);
 
@@ -467,6 +503,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 *(ci->r) = param;
                 MOOLOG << "GeosController::tryAddConstraint - added radius" <<param << " for circle (" <<  *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
             }
+            /*
+            UID uid = NOUID;
+            if ( puid != nullptr && *puid != NOUID )
+                uid = *puid;
+            else
+                *puid = uid = UIDGen::instance()->generate();
+
+            _constraints[uid] = cinfo;
+
+            cinfo.objs = uids;
+            _objects[uids[0]].constrs.push_back(uid);
+            */
             added = true;
 		}
         break;
@@ -496,7 +544,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
 			cinfo.constrs[0].cparam.push_back(line1->end->x);
 			cinfo.constrs[0].cparam.push_back(line1->end->y);
 
-            UID uid = UIDGen::instance()->generate();
+            UID uid = NOUID;
+            if ( puid != nullptr ){
+                if (*puid != NOUID )
+                    uid = *puid;
+                else
+                    *puid = uid = UIDGen::instance()->generate();
+            }
+            else
+                uid = UIDGen::instance()->generate();
+
+            cinfo.objs = uids;
+
 			_constraints[uid] = cinfo;
 
             _objects[uids[0]].constrs.push_back(uid);
@@ -534,7 +593,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
 				cinfo.constrs[0].cparam.push_back(line1->end->x);
 				cinfo.constrs[0].cparam.push_back(line1->end->y);
 
-				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
 
                 _objects[uids[k]].constrs.push_back(uid);
@@ -561,7 +631,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 cinfo.constrs[0].cparam.push_back(li->beg->x);
                 cinfo.constrs[0].cparam.push_back(li->end->x);
 
-				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
 
                 _objects[uids[k]].constrs.push_back(uid);
@@ -586,7 +667,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 cinfo.constrs[0].cparam.push_back(li->beg->y);
                 cinfo.constrs[0].cparam.push_back(li->end->y);
 
-				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
 
 				_objects[uids[k]].constrs.push_back(uid);
@@ -629,8 +721,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 cinfo.constrs[1].cparam.push_back(line1->end->x);
                 cinfo.constrs[1].cparam.push_back(line1->end->y);
 
+                cinfo.objs = uids;
 
-				UID uid = UIDGen::instance()->generate();
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
 
 
@@ -661,7 +763,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
                 cinfo.constrs[0].cparam.push_back(li->end->y);
                 cinfo.constrs[0].cparam.push_back(ci->r);
 
-				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
                 MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
                 added = true;
@@ -686,7 +799,18 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
 				cinfo.constrs[0].cparam.push_back(ci0->r);
 				cinfo.constrs[0].cparam.push_back(ci1->r);
 
-  				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
 				_constraints[uid] = cinfo;
 
                 MOOLOG << "GeosController::tryAddConstraint - added equal radius for circles " << *ci0->center << " and " << *ci1->center << std::endl;
@@ -714,7 +838,19 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
 				cinfo.constrs[0].cparam.push_back(line1->end->x);
 				cinfo.constrs[0].cparam.push_back(line1->end->y);
 
-  				UID uid = UIDGen::instance()->generate();
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
+
 				_constraints[uid] = cinfo;
 
                 MOOLOG << "GeosController::tryAddConstraint - added equal for lines " << *line0 << " and " << *line1 << std::endl;
@@ -726,14 +862,16 @@ int georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &u
     }
 
     default:
-        ;
+        MOOLOG << "Core:: Unhandled constraint type" << std::endl;
+
     }
-	if (added) return 0;
-	return -1;
+    if (added) return RC_OK;
+    return RC_RUNTIME_ERR;
 }
 
 RESCODE georis::Core::addConstraint(ConstraintType type,const std::vector<UID> &uids,double param,UID *puid) {
-	if ( uids.empty() ) return -1;
+    if ( uids.empty() ) return RC_INVALIDARG;
+
 	//check for uids not ours or child object uids of any given
 	for (size_t k = 0;k< uids.size();++k){
 		auto it = _objects.find(uids[k]);
@@ -745,14 +883,15 @@ RESCODE georis::Core::addConstraint(ConstraintType type,const std::vector<UID> &
 			++c;
 		}
 	}
+
     MOOLOG << "georis::Core::addConstraint " << uids.size() << " objects" << std::endl;
 
 	backupState();
-	int res = tryAddConstraint(type,uids,param,puid);
+    RESCODE res = tryAddConstraint(type,uids,param,puid);
     MOOLOG << "georis::Core::addConstraint " << res << " tac" << std::endl;
-	if ( 0 != res ) return res;
+    if ( RC_OK != res ) return res;
 	res = solve();
-	if ( 0 == res ) return res;
+    if ( RC_OK == res ) return res;
 	restoreState();
 	return res;
 }
@@ -777,7 +916,7 @@ RESCODE georis::Core::queryConstrInfo(UID uid,ConstraintType &type,std::vector<U
 
 	type = (*it).second.type;
 	objs.clear();
-
+    objs = (*it).second.objs;
     return RC_OK;
 }
 void georis::Core::enumConstraints(std::vector<UID>&uids)const{
