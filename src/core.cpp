@@ -101,7 +101,10 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
         if (puid) *puid = uid;
 		break;
     }
-    case OT_ARC:
+    case OT_ARC:{
+
+        break;
+    }
     case OT_SPLINE:
     case OT_NONE:
     default:
@@ -130,8 +133,8 @@ void georis::Core::internalRemovePoint(UID pui) {
     if ( objit == _objects.end()) return;
 
     // Remove constraints
-    for (auto it = (*objit).second.constrs.begin();it != (*objit).second.constrs.end();++it)
-		removeConstraint(*it);
+    while ( ! (*objit).second.constrs.empty() )
+        removeConstraint( (*objit).second.constrs.front() );
 
 	ptrep* p = dynamic_cast<ptrep*>((*objit).second.obj);
     //Remove params
@@ -354,10 +357,12 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         }
         break;
     }*/
+    case CT_COINCIDENT:
+        param = 0;
     case CT_DISTANCE:
     case CT_DIMENSION:{
         if ( param < 0)
-            return -1;
+            return RC_INVALIDARG;
 
 		std::map<ObjectType,std::vector<objInfo*> > grouped;
 		groupObj(uids,grouped);

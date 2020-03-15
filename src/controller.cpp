@@ -103,6 +103,9 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         case OT_CIRCLE:
             snprintf(buf,bufsize,"Окружность%d",_lastObjNums[type]);
             break;
+        case OT_ARC:
+            snprintf(buf,bufsize,"Дуга%d",_lastObjNums[type]);
+            break;
         default:
             ;
         }
@@ -172,16 +175,10 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
             break;
         }
         case OT_CIRCLE:{
-/*
-            GeoObjInfo info;
-            _core.queryObjInfo(_memHighlights[1],info);
-            if ( info.type == OT_POINT ){
-                std::vector<UID> cobjs;
-                cobjs.push_back(uid);
-                cobjs.push_back(_memHighlights[1]);
-                _core.addConstraint(CT_DISTANCE,cobjs,0);
-            }
-            */
+            std::vector<UID> cobjs;
+            cobjs.push_back(ids[1]);
+            cobjs.push_back(m_memHighlights[1]);
+            addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         default:
@@ -270,6 +267,7 @@ void georis::Controller::resetSelection() {
             MOOLOG << "Controller::resetSelection reset for " << it.first << std::endl;
         }
     }
+    showSelectionInfo();
 }
 void georis::Controller::selectByPoint(double x,double y,double precision) {
     point2r p(&x,&y);
@@ -318,11 +316,11 @@ void georis::Controller::selectByPoint(double x,double y,double precision) {
         if ( !subs.empty() )
             for ( size_t s = 0 ; s < subs.size();++s )
                 m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
-
+        showSelectionInfo();
     }
     else
         resetSelection();
-    showSelectionInfo();
+
     MOOLOG << "Controller::selectByPoint L size " << m_objs.size() << std::endl;
 }
 

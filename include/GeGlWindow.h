@@ -12,19 +12,21 @@ class GeGlWindow:public Fl_Gl_Window{
       void setController(georis::Controller *c){if (c) _controller = c;};
       void drawPoint(double x, double y,unsigned status );
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
-      void drawCircle(double x, double y, const double r,unsigned status );
-      void setMode(InputMode mode){_input_mode = mode;};
+      void drawCircle(double x, double y, double r,unsigned status );
+      void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
+      void setMode(InputMode mode){_input_mode = mode; _state = 0;};
       virtual void resize(int x,int y, int w,int h);
    private:
       georis::Controller *_controller;
-      float _left, _right, _top, _bottom;
-      double _coo[7];// _coo[0:1] - current
+      float _left, _right, _top, _bottom;      
+      double _coo[8];// _coo[0:1] - current _coo[]
       double _zoomFactor;
       unsigned _input_mode;
       unsigned _state;
 
-		void draw();
-      void setColor(unsigned status );
+      void draw();
+      void setColor(unsigned status);
+      void setStyle(unsigned status);
       void clearBG();
       void showGrid();
       void showMode();
@@ -34,7 +36,7 @@ class GeGlWindow:public Fl_Gl_Window{
       void processMouse(int button, int state, int x, int y);
       void processDrag(int x,int y);
       void processMove(int x,int y);
-	  void zoomIn(double px,double py);
+      void zoomIn(double px,double py);
       void zoomOut(double px,double py);
 
 
