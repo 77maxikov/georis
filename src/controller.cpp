@@ -42,7 +42,7 @@ void georis::Controller::setUI(IVisualizer *vis) {
     showSelectionInfo();
 }
 void georis::Controller::updateView() {
-    //MOOLOG << "GeosController::updateView: " << m_objs.size() << " objects to update" << std::endl;
+    MOOLOG << "GeosController::updateView: " << m_objs.size() << " objects to update" << std::endl;
     for (auto it: m_objs){
         ObjectType objtype;
         std::vector<double> param;
@@ -50,22 +50,8 @@ void georis::Controller::updateView() {
         if ( res != RC_OK ){
             MOOLOG << "Controller::updateView no such obj with uid " << it.first << std::endl;
             return;
-        }
-
-        double *para = &*param.begin();
-        switch (objtype){
-        case ObjectType::OT_POINT:
-            m_ui->drawPoint(para,para+1,it.second.status/*|(it.second?MODE_FIXED:MODE_NORMAL)*/);
-            break;
-        case ObjectType::OT_SEGMENT:
-            m_ui->drawLine(para,para+1,para+2,para+3,it.second.status/*|(info.status?MODE_FIXED:MODE_NORMAL)*/);
-            break;
-        case ObjectType::OT_CIRCLE:
-            m_ui->drawCircle(para,para+1,para+2,it.second.status/*|(info.status?MODE_FIXED:MODE_NORMAL)*/);
-            break;
-        default:
-            ;
-        }
+        }        
+        m_ui->drawObject(objtype,param,it.second.status);
     }
 }
 void georis::Controller::addObject(georis::ObjectType type, const std::vector<double> &param,const std::string &name){
@@ -83,10 +69,6 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         return;
     }
     MOOLOG << "Controller::addObject added parent with UID " << uid << std::endl;
-
-    std::vector<UID> ids;
-    m_core.getObjChilds(uid,ids);
-
 
     const size_t bufsize = 64;
     static char buf[bufsize];
@@ -121,6 +103,7 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         MOOLOG << "Controller::addObject can't get new object children" << std::endl;
         return ;
     }
+
     for (auto chuid: chids){
         ObjectType ot;
         res = m_core.getObjType(chuid,ot);
@@ -135,6 +118,7 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         m_objs[chuid].name = buf;
         MOOLOG << "Controller::addObject added child with UID " << chuid << std::endl;
     }
+
     // Add implicit constraints
 
     if ( m_memHighlights[0] != NOUID ){
@@ -148,14 +132,14 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         }
         case OT_SEGMENT:{
             std::vector<UID> cobjs;
-            cobjs.push_back(ids[0]);
+            cobjs.push_back(chids[0]);
             cobjs.push_back(m_memHighlights[0]);
             addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         case OT_CIRCLE:{
             std::vector<UID> cobjs;
-            cobjs.push_back(ids[0]);
+            cobjs.push_back(chids[0]);
             cobjs.push_back(m_memHighlights[0]);
             addConstraint(CT_COINCIDENT,cobjs);
             break;
@@ -169,14 +153,14 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         switch(type){
         case OT_SEGMENT:{
             std::vector<UID> cobjs;
-            cobjs.push_back(ids[1]);
+            cobjs.push_back(chids[1]);
             cobjs.push_back(m_memHighlights[1]);
             addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
         case OT_CIRCLE:{
             std::vector<UID> cobjs;
-            cobjs.push_back(ids[1]);
+            cobjs.push_back(chids[1]);
             cobjs.push_back(m_memHighlights[1]);
             addConstraint(CT_COINCIDENT,cobjs);
             break;

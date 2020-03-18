@@ -4,6 +4,7 @@
 #include "IVisualizer.h"
 #include "controller.h"
 
+namespace georis{
 class GeVisualizer:public IVisualizer
 {
     static GeVisualizer *_instance;
@@ -65,13 +66,13 @@ public:
 
     void reset(){_showGrid = true;}
     virtual void setController(georis::Controller *);
-    virtual void drawPoint(const double *px,const double *py,unsigned status = MODE_NORMAL);
-    virtual void drawLine(const double *px1,const double *py1,const double *px2,const double *py2,unsigned status = MODE_NORMAL);
-    virtual void drawCircle(const double *px,const double *py,const double *r,unsigned status = MODE_NORMAL);
+
+    virtual void drawObject(ObjectType type, std::vector<const double*> param,unsigned status = MODE_NORMAL);
+
     virtual void setAvailConstraints(const std::vector<georis::ConstraintType> &){};
     virtual void setSelectedObjs(const std::map<UID,std::string> &){};
     virtual void setSelectedConstraints(const std::map<UID,std::string> &){};
 
 };
-
+}
 #endif // _GEOVISUALIZER_H

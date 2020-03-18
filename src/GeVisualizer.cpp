@@ -5,14 +5,14 @@
 #include <cmath>
 
 #include "mooLog.h"
-GeVisualizer* GeVisualizer::_instance = nullptr;
+georis::GeVisualizer* georis::GeVisualizer::_instance = nullptr;
 
 
 static inline double GET_ABS(double x) {
     return x>0?x:-x;
 }
 
-void GeVisualizer::drawAALine( double x1, double y1, double x2, double y2, //coordinates of the line
+void georis::GeVisualizer::drawAALine( double x1, double y1, double x2, double y2, //coordinates of the line
                                  float w, //width/thickness of the line in pixel
                                  float Cr, float Cg, float Cb, //RGB color components
                                  float Br, float Bg, float Bb, //color of background when alphablend=false,
@@ -75,20 +75,20 @@ void GeVisualizer::drawAALine( double x1, double y1, double x2, double y2, //coo
     glEnd();
 }
 
-void GeVisualizer::displayFunc(void) {
+void georis::GeVisualizer::displayFunc(void) {
     GeVisualizer::instance()->show();
 }
-void GeVisualizer::keyboardFunc(GLubyte key,GLint x,GLint y) {
+void georis::GeVisualizer::keyboardFunc(GLubyte key,GLint x,GLint y) {
     GeVisualizer::instance()->processKeyboard(key,x,y);
 }
-void GeVisualizer::mouseFunc(int button, int state, int x, int y) {
+void georis::GeVisualizer::mouseFunc(int button, int state, int x, int y) {
     GeVisualizer::instance()->processMouse(button,state,x,y);
 }
-void GeVisualizer::motionFunc(int x, int y) {
+void georis::GeVisualizer::motionFunc(int x, int y) {
     GeVisualizer::instance()->processMotion(x,y);
 }
 
-GeVisualizer::GeVisualizer() {
+georis::GeVisualizer::GeVisualizer() {
     _input_mode = IM_NONE;
     _left = -1;
     _right = 1;
@@ -113,10 +113,10 @@ GeVisualizer::GeVisualizer() {
     objcBfixsel = 0.5;
     _showGrid = false;
 }
-void GeVisualizer::execute() {
+void georis::GeVisualizer::execute() {
     glutMainLoop();
 }
-void GeVisualizer::init(int argc, char* argv[]) {
+void georis::GeVisualizer::init(int argc, char* argv[]) {
     glutInit(&argc, argv);
 
     glutInitWindowPosition(0,0);
@@ -131,11 +131,11 @@ void GeVisualizer::init(int argc, char* argv[]) {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
-void GeVisualizer::setController(georis::Controller *controller) {
+void georis::GeVisualizer::setController(georis::Controller *controller) {
     if (controller != nullptr)
         _controller = controller;
 }
-void GeVisualizer::show() {
+void georis::GeVisualizer::show() {
     setZoom();
     clear();
     showGrid();
@@ -147,7 +147,7 @@ void GeVisualizer::show() {
         glFlush();
     }
 }
-void GeVisualizer::processMouse(int button, int state, int x, int y) {
+void georis::GeVisualizer::processMouse(int button, int state, int x, int y) {
     double px, py;
     win2int(x,y,px,py);
     switch (button) {
@@ -230,7 +230,7 @@ void GeVisualizer::processMouse(int button, int state, int x, int y) {
     //   printf("at x: %d, y: %d, button: %d, state: %d\n",x,y,button,state);
     //   printf("t: %f, b: %f, l: %f, r %f\n",_top, _bottom,_left,_right);
 }
-void GeVisualizer::processKeyboard(GLubyte key,GLint x,GLint y) {
+void georis::GeVisualizer::processKeyboard(GLubyte key,GLint x,GLint y) {
     switch (key) {
     case 27: // ESC
         if ( _input_mode != IM_NONE ) {
@@ -308,7 +308,7 @@ void GeVisualizer::processKeyboard(GLubyte key,GLint x,GLint y) {
 //LOG << (int)key << std::endl;
     glutPostRedisplay();
 }
-void GeVisualizer::processMotion(int x,int y) {
+void georis::GeVisualizer::processMotion(int x,int y) {
 	double px, py;
    win2int(x,y,px,py);
    MOOLOG << "Process motion" << std::endl;
@@ -319,12 +319,12 @@ void GeVisualizer::processMotion(int x,int y) {
 	_cury = py;
 	glutPostRedisplay();
 }
-void GeVisualizer::clear() {
+void georis::GeVisualizer::clear() {
     glClearColor(bgcR,bgcG ,bgcB ,0);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void GeVisualizer::showGrid() {
+void georis::GeVisualizer::showGrid() {
     if ( _showGrid ){
         int ma = 5;
         int mi = -5;
@@ -366,14 +366,14 @@ void GeVisualizer::showGrid() {
         glEnd();
     }
 }
-void GeVisualizer::zoomIn(double px,double py) {
+void georis::GeVisualizer::zoomIn(double px,double py) {
     _left = _zoomFactor*_left + px*(1 -_zoomFactor);
     _right = _zoomFactor*_right + px*(1 - _zoomFactor);
     _bottom  = _zoomFactor*_bottom + py*(1-_zoomFactor);
     _top = _zoomFactor*_top + py*(1-_zoomFactor);
     glutPostRedisplay();
 }
-void GeVisualizer::zoomOut(double px,double py) {
+void georis::GeVisualizer::zoomOut(double px,double py) {
     _left = 1/_zoomFactor*_left + px*(1 -1/_zoomFactor);
     _right = 1/_zoomFactor*_right + px*(1 - 1/_zoomFactor);
     _bottom  = 1/_zoomFactor*_bottom + py*(1-1/_zoomFactor);
@@ -381,13 +381,13 @@ void GeVisualizer::zoomOut(double px,double py) {
     glutPostRedisplay();
 }
 
-void GeVisualizer::setZoom() {
+void georis::GeVisualizer::setZoom() {
     glLoadIdentity();
     glOrtho(_left,_right,_bottom,_top,-1.0,1.0);
 //LOG << "GeVisualizer::setZoom - left = " << _left << ", top = " << _top << ", right = " << _right << ", bottom = " << _bottom << std::endl;
     glMatrixMode(GL_MODELVIEW);
 }
-void GeVisualizer::showMode() {
+void georis::GeVisualizer::showMode() {
     if (_input_mode != IM_NONE) {
         glColor3f( 1, 0, 0 );
         glMatrixMode(GL_PROJECTION);
@@ -428,14 +428,14 @@ void GeVisualizer::showMode() {
     }
 
 }
-void GeVisualizer::win2int(int wx,int wy,double &ix,double &iy) {
+void georis::GeVisualizer::win2int(int wx,int wy,double &ix,double &iy) {
     int _wWidth = glutGet(GLUT_WINDOW_WIDTH);
     int _wHeight = glutGet(GLUT_WINDOW_HEIGHT);
 
     ix = _left + wx*(_right - _left)/_wWidth;
     iy = _top - wy*(_top - _bottom)/_wHeight;
 }
-void GeVisualizer::drawPoint(const double *px,const double *py,unsigned status) {
+void georis::GeVisualizer::drawPoint(const double *px,const double *py,unsigned status) {
     setColor(status & MODE_SELECTED, status & MODE_FIXED);
     glPointSize(5.0f);
     glEnable(GL_POINT_SMOOTH);
@@ -445,7 +445,7 @@ void GeVisualizer::drawPoint(const double *px,const double *py,unsigned status) 
     glEnd();
     glDisable(GL_POINT_SMOOTH);
 }
-void GeVisualizer::drawLine(const double *px1,const double *py1,const double *px2,const double *py2,unsigned status) {
+void georis::GeVisualizer::drawLine(const double *px1,const double *py1,const double *px2,const double *py2,unsigned status) {
     setColor(status & MODE_SELECTED, status & MODE_FIXED);
     glLineWidth(2.1f);
     glEnable(GL_LINE_SMOOTH);
@@ -458,7 +458,7 @@ void GeVisualizer::drawLine(const double *px1,const double *py1,const double *px
     glEnd();
     //glDisable(GL_POINT_SMOOTH);
 }
-void GeVisualizer::drawCircle(const double *px,const double *py,const double *r,unsigned status) {
+void georis::GeVisualizer::drawCircle(const double *px,const double *py,const double *r,unsigned status) {
     setColor(status & MODE_SELECTED, status & MODE_FIXED);
     int num_segments = 100;
 
@@ -498,7 +498,7 @@ void GeVisualizer::drawCircle(const double *px,const double *py,const double *r,
     }
     glEnd();
 }
-void GeVisualizer::setColor(bool selected,bool fixed) {
+void georis::GeVisualizer::setColor(bool selected,bool fixed) {
     if ( !selected ) {
         if ( fixed )
             glColor3f( objcRfix,objcGfix,objcBfix);

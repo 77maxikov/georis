@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <vector>
+#include <limits>
 #include "georis.h"
 
 namespace georis{
@@ -84,7 +85,7 @@ struct ptrep:public point2r, public sketchObj {
 struct lirep:public sketchObj {
     ptrep *beg;
     ptrep *end;
-    lirep(ptrep *b,ptrep *e):beg(b),end(e) {};
+    lirep(ptrep *b,ptrep *e):beg(b),end(e) {}
     operator line2r ()const {
         return line2r(*beg,*end);
     }
@@ -130,6 +131,74 @@ struct circrep:public sketchObj {
             }
     virtual ObjectType type()const {
         return ObjectType::OT_CIRCLE;
+    }
+};
+
+struct arcrep:public sketchObj {
+    ptrep *center;
+    ptrep *beg;
+    ptrep *end;
+    double angle;
+    arcrep(ptrep *cent,ptrep *be,ptrep *en,double angl):center(cent),beg(be),end(en),angle(angl) {};
+
+    double dist2point(double x_,double y_) const {
+        double dxb = *(beg->x) - *(center->x);
+        double dyb = *(beg->y) - *(center->y);
+        double phib = atan2(dyb,dxb);
+        double rb = std::sqrt( dxb*dxb + dyb*dyb);
+
+        double dxe = *(end->x) - *(center->x);
+        double dye = *(end->y) - *(center->y);
+        double phie = atan2(dye,dxe);
+
+        double dx = x_ - *(center->x);
+        double dy = y_ - *(center->y);
+        double phi = atan2(dy,dx);
+        double r = std::sqrt( dx*dx + dy*dy);
+
+        double s = 0,f = 0;
+        if ( angle < 0 ){
+            if ( phib > phie ){
+                s = phie;
+                f = phib;
+            }
+            else{
+                s = phie - 2*M_PI;
+                f = phib;
+            }
+        }
+        else{
+            if ( phib > phie ){
+                s = phie;
+                f = phib;
+            }
+            else{
+                s = phie - 2*M_PI;
+                f = phib;
+            }
+        }
+
+        if ( s <= phi && phi <= f )  return std::abs( rb - r );
+
+        return std::numeric_limits<double>::infinity();
+    }
+
+    static double converten(double beOrig,double enOrig,bool CW){
+        if ( CW &&  enOrig < beOrig ){
+            if ( CW ) return enOrig + 2*M_PI;
+            else return enOrig + 2*M_PI;
+        }
+    }
+
+    bool inRect(double xtl,double ytl,double xbr,double ybr)const{
+
+        return true;// ( xtl<= (*(center->x)-*r) && (*(center->x)+*r) <= xbr && ytl <= (*(center->y)-*r) && (*(center->y)+*r) <= ybr );
+    }
+    virtual void move(double dx,double dy){
+        center->move(dx,dy);
+    }
+    virtual ObjectType type()const {
+        return ObjectType::OT_ARC;
     }
 };
 

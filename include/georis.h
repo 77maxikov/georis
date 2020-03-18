@@ -2,6 +2,15 @@
 
 namespace georis{
 
+enum InputMode{
+    IM_NONE=0,
+    IM_POINT,
+    IM_LINE,
+    IM_CIRCLE,
+    IM_ARC,
+    IM_RECT
+    };
+
 enum ObjectType{
         OT_NONE=0,
         OT_POINT,

@@ -16,28 +16,21 @@
 
 
 
-enum InputMode{
-	IM_NONE=0,
-	IM_POINT,
-	IM_LINE,
-	IM_CIRCLE,
-        IM_ARC,
-	IM_RECT
-	};
-
+namespace georis{
 class IVisualizer{
 public:
         virtual void reset() = 0;
-        virtual void setController(georis::Controller*) = 0;
+        virtual void setController(Controller*) = 0;
 
-	virtual void drawPoint(const double *px,const double *py,unsigned status = MODE_NORMAL)=0;
+        virtual void drawObject(ObjectType type, const  std::vector<double> &param,unsigned status = MODE_NORMAL) = 0;
+/*	virtual void drawPoint(const double *px,const double *py,unsigned status = MODE_NORMAL)=0;
 	virtual void drawLine(const double *px1,const double *py1,const double *px2,const double *py2,unsigned status = MODE_NORMAL)=0;
 	virtual void drawCircle(const double *px,const double *py,const double *r,unsigned status = MODE_NORMAL)=0;
-
+*/
         virtual void setSelectedObjs(const std::map<UID,std::string> &) = 0;
         virtual void setSelectedConstraints(const std::map<UID,std::string> &) = 0;
         virtual void setAvailConstraints(const std::vector<georis::ConstraintType> &) = 0;
 };
-
+}
 
 #endif // _IVISUALIZER_H

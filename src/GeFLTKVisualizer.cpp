@@ -7,7 +7,7 @@
 #include "georis.h"
 #include "../res/xpms.h"
 
-GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Window(W, H, L) {
+georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Window(W, H, L) {
     _controller = nullptr;
     resizable(this);
 
@@ -49,10 +49,10 @@ GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Windo
     end();
 }
 
-GeFLTKVisualizer::~GeFLTKVisualizer() {
+georis::GeFLTKVisualizer::~GeFLTKVisualizer() {
     if (_glWindow) delete _glWindow;
 }
-void GeFLTKVisualizer::setController(georis::Controller *ctrl) {
+void georis::GeFLTKVisualizer::setController(georis::Controller *ctrl) {
     if (_controller == nullptr && ctrl != nullptr) {
         _controller = ctrl;
         _glWindow->show();
@@ -60,14 +60,14 @@ void GeFLTKVisualizer::setController(georis::Controller *ctrl) {
         _infowin->setController(ctrl);
     }
 }
-int GeFLTKVisualizer::handle(int event) {
+int georis::GeFLTKVisualizer::handle(int event) {
     switch (event) {
     case FL_KEYBOARD:
         return processKeyboard(Fl::event_key());
     }
 	return Fl_Double_Window::handle(event);
 }
-void GeFLTKVisualizer::setInputMode(InputMode mode){
+void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
     MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
 	_glWindow->setMode(mode);
 
@@ -84,13 +84,13 @@ void GeFLTKVisualizer::setInputMode(InputMode mode){
 	}
 
 }
-void GeFLTKVisualizer::resize(int x, int y, int w, int h){
+void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
 
     _glWindow->resize(_infowin->w()+5,40,w - (_infowin->w() + 5),h-40);
     //_glWindow->resize(5,40,w - 5,h-40);
 
 }
-int GeFLTKVisualizer::processKeyboard(int key) {
+int georis::GeFLTKVisualizer::processKeyboard(int key) {
 MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
     switch (key) {
     case FL_Escape: // ESC
@@ -154,21 +154,41 @@ MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
    _glWindow->redraw();
 	return 1;
 }
-void GeFLTKVisualizer::drawPoint(const double *x, const double *y,unsigned status) {
-    _glWindow->drawPoint(*x,*y,status);
-}
-void GeFLTKVisualizer::drawLine(const double *x1, const double *y1, const double *x2, const double *y2,unsigned status ) {
-    _glWindow->drawLine(*x1,*y1,*x2,*y2,status);
-}
-void GeFLTKVisualizer::drawCircle(const double *x, const double *y, const double *r,unsigned status ) {
-    _glWindow->drawCircle(*x,*y,*r,status);
-}
+void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<double> &param,unsigned status){
+    switch (type){
+    case georis::OT_POINT:        
+        _glWindow->drawPoint(param[0],param[1],status);
+        break;
+    case georis::OT_SEGMENT:
+        _glWindow->drawLine(param[0],param[1],param[2],param[3],status);
+        break;
+    case georis::OT_CIRCLE:
+        _glWindow->drawCircle(param[0],param[1],param[2],status);
+        break;
+    case georis::OT_ARC:
+        _glWindow->drawArc(param[0],param[1],param[2],param[3],param[4],status);
+    default:
+        ;
+    }
 
-void GeFLTKVisualizer::cbFileNew(Fl_Widget*w, void*d) {
+}
+/*
+void georis::GeFLTKVisualizer::drawPoint(const double *x, const double *y,unsigned status) {
+
+}
+void georis::GeFLTKVisualizer::drawLine(const double *x1, const double *y1, const double *x2, const double *y2,unsigned status ) {
+
+}
+void georis::GeFLTKVisualizer::drawCircle(const double *x, const double *y, const double *r,unsigned status ) {
+
+}
+*/
+
+void georis::GeFLTKVisualizer::cbFileNew(Fl_Widget*w, void*d) {
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->createNew();
 }
 
-void GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
     Fl_Native_File_Chooser fnfc;
     fnfc.title("Pick a file");
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
@@ -189,7 +209,7 @@ void GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->loadFrom(fnfc.filename());
 }
 
-void GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
     Fl_Native_File_Chooser fnfc;
     fnfc.title("Pick a file");
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
@@ -209,54 +229,54 @@ void GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
     }
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->saveTo(fnfc.filename());
 }
-void GeFLTKVisualizer::cbUndo(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbUndo(Fl_Widget*w, void*d) {
 
 }
-void GeFLTKVisualizer::cbRedo(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbRedo(Fl_Widget*w, void*d) {
 
 }
 
 
 
-void GeFLTKVisualizer::cbDrawPoint(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbDrawPoint(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
 	else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_POINT);
 }
-void GeFLTKVisualizer::cbDrawLine(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbDrawLine(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
 	else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_LINE);
 }
-void GeFLTKVisualizer::cbDrawCircle(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbDrawCircle(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
 	else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_CIRCLE);
 }
-void GeFLTKVisualizer::cbDrawArc(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbDrawArc(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
 	else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_ARC);
 }
-void GeFLTKVisualizer::cbDrawRect(Fl_Widget*w, void*d) {
+void georis::GeFLTKVisualizer::cbDrawRect(Fl_Widget*w, void*d) {
     if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
     else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_RECT);
 }
 
-void GeFLTKVisualizer::setAvailConstraints(const std::vector<georis::ConstraintType> &constr) {
+void georis::GeFLTKVisualizer::setAvailConstraints(const std::vector<georis::ConstraintType> &constr) {
     MOOLOG << "GeFLTKVisualizer::setAvailConstraints called with " << constr.size() << " constraints " << std::endl;
     _infowin->setAvailConstraints(constr);
 }
-void GeFLTKVisualizer::setSelectedObjs(const std::map<UID,std::string> &objNames){
+void georis::GeFLTKVisualizer::setSelectedObjs(const std::map<UID,std::string> &objNames){
     _infowin->setSelectedObjs(objNames);
 }
-void GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
+void georis::GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
 
     _infowin->setSelectedConstraints(constrNames);
 }

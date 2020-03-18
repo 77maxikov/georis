@@ -102,6 +102,31 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
 		break;
     }
     case OT_ARC:{
+        ptrep* ptc = nullptr;
+        UID uidc = internalAddPoint(param[0],param[1],&ptc);
+        ptrep* pts = nullptr;
+        UID uidp1 = internalAddPoint(param[2],param[3],&pts);
+        double dx = param[2] - param[0];
+        double dy = param[3] - param[1];
+        double a = atan2(dy,dx);
+        double r = std::sqrt(dx*dx + dy*dy);
+
+        a += param[4];
+        dx = param[0] + r*cos(a);
+        dy = param[1] + r*sin(a);
+
+        ptrep* pte = nullptr;
+        UID uidp2 = internalAddPoint(dx,dy,&pte);
+
+        UID uid = UIDGen::instance()->generate();
+        objInfo info;
+        info.obj = new arcrep(ptc,pts,pte, param[4]);
+        info.objChilds[0] = uidc;
+        info.objChilds[1] = uidp1;
+        info.objChilds[2] = uidp2;
+
+        _objects[uid] = info;
+        if (puid) *puid = uid;
 
         break;
     }
@@ -250,7 +275,17 @@ RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&pa
             param.push_back(*ci->r);
 			break;
 			}
-    case OT_ARC:
+        case OT_ARC:{
+            param.reserve(5);
+            arcrep *arc = dynamic_cast<arcrep*>((*objit).second.obj);
+            param.push_back(*arc->center->x);
+            param.push_back(*arc->center->y);
+            param.push_back(*arc->beg->x);
+            param.push_back(*arc->beg->y);
+            param.push_back(arc->angle);
+
+            break;
+        }
     case OT_SPLINE:
     case OT_NONE:
     default:
@@ -281,6 +316,8 @@ RESCODE georis::Core::getObjChilds(UID uid,std::vector<UID>&uids)const {
         uids = std::vector<UID>(start,start+1);
         break;
     case OT_ARC:
+        uids = std::vector<UID>(start,start+3);
+        break;
     case OT_SPLINE:
     case OT_POINT:
     case OT_NONE:
@@ -306,6 +343,8 @@ void georis::Core::findObjInCirc(const point2r&p,double radius,std::vector<UID> 
 	uids.clear();
 	for (auto it = _objects.begin();it != _objects.end();++it){
 		double dist = (*it).second.obj->dist2point(*(p.x),*(p.y));
+//MOOLOG << "Core::findObjInCirc:  id " << (*it).first << " dist " << dist << std::endl;
+
 		if ( dist < radius ){
 			uids.push_back((*it).first);
 			if ( dists != nullptr )

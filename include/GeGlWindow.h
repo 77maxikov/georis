@@ -3,8 +3,6 @@
 #include <FL/Fl_Gl_Window.H>
 #include "controller.h"
 
-
-
 class GeGlWindow:public Fl_Gl_Window{
    public:
       GeGlWindow(int x,int y, int w,int h,const char *name=0);
@@ -14,7 +12,7 @@ class GeGlWindow:public Fl_Gl_Window{
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
       void drawCircle(double x, double y, double r,unsigned status );
       void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
-      void setMode(InputMode mode){_input_mode = mode; _state = 0;};
+      void setMode(georis::InputMode mode){_input_mode = mode; _state = 0;};
       virtual void resize(int x,int y, int w,int h);
    private:
       georis::Controller *_controller;

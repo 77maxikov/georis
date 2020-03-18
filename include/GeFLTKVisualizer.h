@@ -12,6 +12,7 @@
 #include <map>
 using std::map;
 
+namespace georis{
 class GeFLTKVisualizer:public Fl_Double_Window,public IVisualizer {
 public:
    GeFLTKVisualizer(int W = 1200, int H = 800, const char*L = "Geos");
@@ -23,9 +24,8 @@ public:
       _glWindow->redraw();
    }
    virtual void setController(georis::Controller *ctrl);
-   virtual void drawPoint(const double *x, const double *y,unsigned status = MODE_NORMAL);
-   virtual void drawLine(const double *x1, const double *y1, const double *x2, const double *y2, unsigned status = MODE_NORMAL );
-   virtual void drawCircle(const double *x, const double *y, const double *r,unsigned status = MODE_NORMAL );
+   virtual void drawObject(ObjectType type, const std::vector<double> &param,unsigned status = MODE_NORMAL);
+
    virtual void setSelectedObjs(const std::map<UID,std::string> &);
    virtual void setSelectedConstraints(const std::map<UID,std::string> &);
    virtual void setAvailConstraints(const std::vector<georis::ConstraintType>&);
@@ -55,5 +55,5 @@ private:
 
    map<InputMode,Fl_ImageCheckButton*> _modebuttons;
 };
-
+}
 #endif // _GEFLTKVISUALIZER_H
