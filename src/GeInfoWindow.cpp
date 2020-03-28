@@ -58,40 +58,33 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
 
 }
 
-void GeInfoWindow::setAvailConstraints(const std::vector<georis::ConstraintType> &constr){
-    if (constr.empty()) {
-        hide();
-        redraw();
-        return;
-    }
-    else show();
-
-    m_pActionToolbar->show();
-    for (auto bu : _constrbuttons)
-        bu.second->hide();
-    for (auto ct: constr){
-        assert(_constrbuttons.find(ct) != _constrbuttons.end() );
-        _constrbuttons[ct]->show();
-    }
-
-    redraw();
-}
-
-void GeInfoWindow::setSelectedObjs(const std::map<UID,std::string> &objNames){    
+void GeInfoWindow::setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
+    const std::vector< std::pair<UID,std::string> > &constrsSel,
+                                    const std::vector<georis::ConstraintType>& constrsAvail){
     m_pBrowserSelected->clear();
-    if (objNames.empty()){
-        hide();
-        return;
-    }
-    else
-        show();
-    for (auto it : objNames)
-        m_pBrowserSelected->add(it.second.c_str());
-}
-void GeInfoWindow::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
     m_pBrowserComCon->clear();
-    for (auto it : constrNames)
-        m_pBrowserComCon->add(it.second.c_str());
+
+    if (objsSel.empty() && constrsSel.empty() && constrsAvail.empty() )
+        hide();
+    else{
+        show();
+
+        for (auto it : objsSel)
+            m_pBrowserSelected->add(it.second.c_str());
+
+        for (auto it : constrsSel)
+            m_pBrowserComCon->add(it.second.c_str());
+
+
+        m_pActionToolbar->show();
+        for (auto bu : _constrbuttons)
+            bu.second->hide();
+        for (auto ct: constrsAvail){
+            assert(_constrbuttons.find(ct) != _constrbuttons.end() );
+            _constrbuttons[ct]->show();
+        }
+    }
+    redraw();
 }
 
 void GeInfoWindow::cbConstrVertical(Fl_Widget*w, void*d) {

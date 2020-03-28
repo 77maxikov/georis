@@ -11,7 +11,8 @@ class GeGlWindow:public Fl_Gl_Window{
       void drawPoint(double x, double y,unsigned status );
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
       void drawCircle(double x, double y, double r,unsigned status );
-      void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
+      //void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
+      void drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status);
       void setMode(georis::InputMode mode){_input_mode = mode; _state = 0;};
       virtual void resize(int x,int y, int w,int h);
    private:

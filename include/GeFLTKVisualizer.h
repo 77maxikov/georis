@@ -26,9 +26,9 @@ public:
    virtual void setController(georis::Controller *ctrl);
    virtual void drawObject(ObjectType type, const std::vector<double> &param,unsigned status = MODE_NORMAL);
 
-   virtual void setSelectedObjs(const std::map<UID,std::string> &);
-   virtual void setSelectedConstraints(const std::map<UID,std::string> &);
-   virtual void setAvailConstraints(const std::vector<georis::ConstraintType>&);
+   virtual void setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
+                            const std::vector< std::pair<UID,std::string> > &constrsSel,
+                            const std::vector<georis::ConstraintType>& constrsAvail);
 
    static void cbFileNew(Fl_Widget*, void*);
    static void cbFileOpen(Fl_Widget*, void*);

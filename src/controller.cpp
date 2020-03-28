@@ -432,13 +432,15 @@ void georis::Controller::showSelectionInfo() {
     if ( m_ui == nullptr ) return;
     // Collect selected objects info
 
-    int nselPoints = 0, nselLines = 0, nselCircls = 0;
+    int nselPoints = 0, nselLines = 0, nselCircls = 0, nselArcs = 0;
+
     std::vector<UID> selected;
     findObj(MODE_SELECTED,selected);
     //if ( selected.empty() ) return;
     m_core.filterChildObj(selected);
 
-    std::map<UID,std::string> namedObjs;
+    std::vector<std::pair<UID,std::string> > objsSel;
+    objsSel.reserve(selected.size());
     for (auto it : selected){
         ObjectType ot;
         m_core.getObjType(it,ot);
@@ -459,13 +461,16 @@ void georis::Controller::showSelectionInfo() {
             ;
 
         }
-        namedObjs[it] = m_objs[it].name;
+        objsSel.push_back( std::make_pair(it,m_objs[it].name) );
     }
 
     MOOLOG << "Controller::showSelectionInfo: total selected "<< selected.size() << std::endl;
-    MOOLOG << "                                          nPoints = "<< nselPoints << " nLines = " << nselLines << " nCircls = " << nselCircls << std::endl;
+    MOOLOG << "  nPoints = "<< nselPoints << std::endl;
+    MOOLOG << "  nLines = " << nselLines << std::endl;
+    MOOLOG << " nCircls = " << nselCircls << std::endl;
+    MOOLOG << " nArcs = " <<nselArcs << std::endl;
 
-    m_ui->setSelectedObjs(namedObjs);
+
 
     // Collect common constrains for selected objects
     std::vector<UID> commonSelConstrs;
@@ -480,59 +485,60 @@ void georis::Controller::showSelectionInfo() {
         base.swap(commonSelConstrs);
         std::set_intersection(base.begin(),base.end(),tmp.begin(),tmp.end(),std::back_inserter(commonSelConstrs));
     }
-    std::map<UID,std::string> namedConstrs;
+    std::vector<std::pair<UID,std::string>> constrsSel;
+    constrsSel.reserve(commonSelConstrs.size());
     for (auto it : commonSelConstrs )
-        namedConstrs[it] = m_constrs[it].name;
+        constrsSel.push_back(std::make_pair(it,m_constrs[it].name));
 
-    m_ui->setSelectedConstraints(namedConstrs);
 
     // Show available constraints
-    std::vector<ConstraintType>  constr;
+    std::vector<ConstraintType>  constrsAvail;
     if ( nselPoints || nselLines || nselCircls ) {
-        constr.push_back(CT_FIX);
+        constrsAvail.push_back(CT_FIX);
         if ( nselPoints > 1 && nselLines == 0  && nselCircls == 0 ) // Only points selected
-            constr.push_back(CT_COINCIDENT);
+            constrsAvail.push_back(CT_COINCIDENT);
 
         if ( nselPoints == 0 && nselLines > 0 && nselCircls == 0 ) { // Only lines are selected
-            constr.push_back(CT_VERTICAL);
-            constr.push_back(CT_HORIZONTAL);
+            constrsAvail.push_back(CT_VERTICAL);
+            constrsAvail.push_back(CT_HORIZONTAL);
             if ( nselLines == 1)
-                constr.push_back(CT_DIMENSION);
+                constrsAvail.push_back(CT_DIMENSION);
             else {
-                constr.push_back(CT_PARALLEL);
-                constr.push_back(CT_COLLINEAR);
-                constr.push_back(CT_EQUAL);
+                constrsAvail.push_back(CT_PARALLEL);
+                constrsAvail.push_back(CT_COLLINEAR);
+                constrsAvail.push_back(CT_EQUAL);
                 if ( nselLines == 2 ){
-                    constr.push_back(CT_ANGLE);
-                    constr.push_back(CT_ORTHO);
+                    constrsAvail.push_back(CT_ANGLE);
+                    constrsAvail.push_back(CT_ORTHO);
                 }
             }
         }
         if ( nselPoints == 0 && nselLines == 0 ) { // Only circles selected
             if ( nselCircls == 1 )
-                constr.push_back(CT_DIMENSION);
+                constrsAvail.push_back(CT_DIMENSION);
             else{
-                constr.push_back(CT_EQUAL);
-                constr.push_back(CT_CONCENTRIC);
-                constr.push_back(CT_TANGENT);
+                constrsAvail.push_back(CT_EQUAL);
+                constrsAvail.push_back(CT_CONCENTRIC);
+                constrsAvail.push_back(CT_TANGENT);
             }
         }
         if ( nselPoints == 1 ){
             if ( nselLines == 1 && nselCircls == 0 ){
-                constr.push_back(CT_COINCIDENT);
-                constr.push_back(CT_MIDPOINT);
+                constrsAvail.push_back(CT_COINCIDENT);
+                constrsAvail.push_back(CT_MIDPOINT);
             }
             if ( nselCircls == 1 && nselLines == 0) {
-                constr.push_back(CT_COINCIDENT);
+                constrsAvail.push_back(CT_COINCIDENT);
             }
         }
         if ( nselPoints == 2 && nselLines == 1 && nselCircls == 0 )
-            constr.push_back(CT_SYMMETRIC);
+            constrsAvail.push_back(CT_SYMMETRIC);
         if ( nselPoints == 0 && nselLines == 1 && nselCircls == 1 )
-            constr.push_back(CT_TANGENT);
+            constrsAvail.push_back(CT_TANGENT);
 
     }
-    m_ui->setAvailConstraints(constr);
+    m_ui->setSelectionInfo(objsSel,constrsSel,constrsAvail);
+
 }
 void georis::Controller::memHighlightsDown(){
     m_memHighlights[0] = NOUID;

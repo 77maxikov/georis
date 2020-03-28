@@ -106,27 +106,34 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
         UID uidc = internalAddPoint(param[0],param[1],&ptc);
         ptrep* pts = nullptr;
         UID uidp1 = internalAddPoint(param[2],param[3],&pts);
+
         double dx = param[2] - param[0];
-        double dy = param[3] - param[1];
-        double a = atan2(dy,dx);
+        double dy = param[3] - param[1];        
         double r = std::sqrt(dx*dx + dy*dy);
 
-        a += param[4];
-        dx = param[0] + r*cos(a);
-        dy = param[1] + r*sin(a);
+        dx = param[4] - param[0];
+        dy = param[5] - param[1];
+        double re = std::sqrt(dx*dx+dy*dy);
+
+        dx *= r/re;
+        dy *= r/re;
+        dx += param[0];
+        dy += param[1];
 
         ptrep* pte = nullptr;
         UID uidp2 = internalAddPoint(dx,dy,&pte);
 
         UID uid = UIDGen::instance()->generate();
         objInfo info;
-        info.obj = new arcrep(ptc,pts,pte, param[4]);
+        info.obj = new arcrep(ptc,pts,pte);
         info.objChilds[0] = uidc;
         info.objChilds[1] = uidp1;
         info.objChilds[2] = uidp2;
 
         _objects[uid] = info;
         if (puid) *puid = uid;
+
+        RESCODE res = addConstraint(CT_EQUAL,{uidc,uidp1,uidc,uidp2});
 
         break;
     }
@@ -220,7 +227,18 @@ RESCODE georis::Core::removeObject(UID remUID) {
         internalRemovePoint(remUID);
         break;
     }
-    case OT_ARC:
+    case OT_ARC:{
+        // Remove constraints
+        for (auto it = (*objit).second.constrs.begin();it != (*objit).second.constrs.end();++it)
+            removeConstraint(*it);
+        // Remove child objects
+        internalRemovePoint( (*objit).second.objChilds[0] );
+        internalRemovePoint( (*objit).second.objChilds[1] );
+        internalRemovePoint( (*objit).second.objChilds[2] );
+        // Remove object
+        _objects.erase(objit);
+        break;
+    }
     case OT_SPLINE:
     case OT_NONE:
     default:
@@ -282,7 +300,8 @@ RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&pa
             param.push_back(*arc->center->y);
             param.push_back(*arc->beg->x);
             param.push_back(*arc->beg->y);
-            param.push_back(arc->angle);
+            param.push_back(*arc->end->x);
+            param.push_back(*arc->end->y);
 
             break;
         }
@@ -898,6 +917,49 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 				_constraints[uid] = cinfo;
 
                 MOOLOG << "GeosController::tryAddConstraint - added equal for lines " << *line0 << " and " << *line1 << std::endl;
+
+            }
+            added = true;
+        }
+        if ( grouped[OT_POINT].size() == 4 ) {
+            for (size_t k= 0; k < grouped[OT_POINT].size()-1; k+=4) {
+                ptrep* pb1 = dynamic_cast<ptrep*>(grouped[OT_POINT][k]->obj);
+                ptrep* pe1 = dynamic_cast<ptrep*>(grouped[OT_POINT][k+1]->obj);
+                ptrep* pb2 = dynamic_cast<ptrep*>(grouped[OT_POINT][k+2]->obj);
+                ptrep* pe2 = dynamic_cast<ptrep*>(grouped[OT_POINT][k+3]->obj);
+
+                constrInfo cinfo;
+                cinfo.type = CT_EQUAL;
+                cinfo.constrs.resize(1);
+
+                cinfo.constrs[0].constr = new ConstrL2LEqual(*pb1,*pe1,*pb2,*pe2);
+
+                cinfo.constrs[0].cparam.push_back(pb1->x);
+                cinfo.constrs[0].cparam.push_back(pb1->y);
+                cinfo.constrs[0].cparam.push_back(pe1->x);
+                cinfo.constrs[0].cparam.push_back(pe1->y);
+
+                cinfo.constrs[0].cparam.push_back(pb2->x);
+                cinfo.constrs[0].cparam.push_back(pb2->y);
+                cinfo.constrs[0].cparam.push_back(pe2->x);
+                cinfo.constrs[0].cparam.push_back(pe2->y);
+
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
+
+                _constraints[uid] = cinfo;
+
+                MOOLOG << "GeosController::tryAddConstraint - added equal for points " << *pb1 << " and " << *pe1 << " and " << *pb2 << " and " << *pe2 << std::endl;
 
             }
             added = true;

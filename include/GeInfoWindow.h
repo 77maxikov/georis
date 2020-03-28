@@ -15,9 +15,9 @@ class GeInfoWindow: public Fl_Window
 public:
    GeInfoWindow(int x,int y,int w,int h,const char *l=0);
    void setController(georis::Controller *controller) {_controller = controller;}
-   void setAvailConstraints(const std::vector<georis::ConstraintType> &constr);
-   void setSelectedObjs(const std::map<UID,std::string> &objNames);
-   void setSelectedConstraints(const std::map<UID, std::string> &constrNames);
+   void setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
+                         const std::vector< std::pair<UID,std::string> > &constrsSel,
+                         const std::vector<georis::ConstraintType>& constrsAvail);
 
    static void cbConstrVertical(Fl_Widget*w, void*d);
    static void cbConstrHorizontal(Fl_Widget*w, void*d);

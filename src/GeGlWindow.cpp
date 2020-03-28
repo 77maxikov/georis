@@ -1,10 +1,11 @@
 #include "GeGlWindow.h"
 #include <FL/gl.h>
 #include <FL/Fl.H>
-#include "mooLog.h"
 #include "georis.h"
 #include <cmath>
 #include <iostream>
+
+#include "mooLog.h"
 
 GeGlWindow::GeGlWindow(int x,int y, int w,int h,const char *name):Fl_Gl_Window(x,y,w,h,name) {
     glEnable(GL_BLEND);
@@ -13,6 +14,7 @@ GeGlWindow::GeGlWindow(int x,int y, int w,int h,const char *name):Fl_Gl_Window(x
     _left = -1; _right = 1; _top = static_cast<float>(h)/w; _bottom = -static_cast<float>(h)/w;
     glViewport(0,0,w,h);
     memset( _coo,0,sizeof(_coo) );
+
     _zoomFactor = 0.9;
     _input_mode = georis::IM_NONE;
     _state = 0;
@@ -82,6 +84,7 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                     _state = 1;
                     break;
                 }
+                break;
             }
             case georis::IM_NONE:
                 if (_controller) {
@@ -132,7 +135,13 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                     break;
                 case 3:{
                     if ( _controller != nullptr ) {
-                        _controller->addObject(georis::OT_ARC,{_coo[2],_coo[3],_coo[4],_coo[5], _coo[6]});
+                        if ( _coo[7] < 0 ) {
+                            _controller->addObject(georis::OT_ARC,{_coo[2],_coo[3],_coo[4],_coo[5], _coo[0],_coo[1]});
+                        }
+                        else{
+                            _controller->addObject(georis::OT_ARC,{_coo[2],_coo[3], _coo[0],_coo[1],_coo[4],_coo[5]});
+                        }
+
                     }
                     _state = 0;
                     break;
@@ -274,6 +283,7 @@ void GeGlWindow::drawCircle(double px, double py, double r,unsigned status) {
     glEnd();
 
 }
+/*
 void GeGlWindow::drawArc(double cx, double cy, double px,double py, double angle,unsigned status) {
     setColor(status);
     setStyle(status);
@@ -318,6 +328,78 @@ void GeGlWindow::drawArc(double cx, double cy, double px,double py, double angle
     }
     glEnd();
 
+}
+*/
+void GeGlWindow::drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status){
+    setColor(status);
+    setStyle(status);
+
+    const int num_segments = 100;
+
+    double dxb = bx - cx;
+    double dyb = by - cy;
+    double phib = atan2(dyb,dxb);
+
+    double dxe = ex - cx;
+    double dye = ey - cy;
+    double phie = atan2(dye,dxe);
+
+    double cro = dxb*dye - dxe*dyb;
+
+    double angle = phie - phib;
+    if ( cro > 0 ){
+        if ( 0 <= angle && angle < M_PI )
+            angle -= 2*M_PI;
+    }
+    else if ( cro < 0 ){
+        if ( phib * phie < 0 ) {
+            if ( angle > M_PI ) angle -= 2*M_PI;
+            if ( angle < -M_PI ) angle += 2*M_PI;
+        }
+        else{
+            if ( angle > M_PI ) angle -= M_PI;
+            if ( angle < -M_PI ) angle += M_PI;
+        }
+    }
+
+
+    float theta = static_cast<float>(angle) / static_cast<float>(num_segments);
+
+    float tangetial_factor = tanf(theta);//calculate the tangential factor
+
+    float radial_factor = cosf(theta);//calculate the radial factor
+
+    float x = bx - cx;
+    float y = by - cy;
+
+
+
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    glBegin(GL_LINE_STRIP);
+    for(int ii = 0; ii < num_segments; ii++) 	{
+        glVertex2f(cx + x, cy + y);//output vertex
+
+        //calculate the tangential vector
+        //remember, the radial vector is (x, y)
+        //to get the tangential vector we flip those coordinates and negate one of them
+
+        float tx = -y;
+        float ty = x;
+
+        //add the tangential vector
+
+        x += tx * tangetial_factor;
+        y += ty * tangetial_factor;
+
+        //correct using the radial factor
+
+        x *= radial_factor;
+        y *= radial_factor;
+    }
+    glVertex2f(static_cast<float>(ex),static_cast<float>(ey));
+    glEnd();
 }
 
 void GeGlWindow::setColor(unsigned status) {
@@ -460,57 +542,23 @@ void GeGlWindow::showMode(){
                 double r = sqrt((_coo[4] - _coo[2])*(_coo[4] - _coo[2]) + (_coo[5] - _coo[3])*(_coo[5] - _coo[3]));
                 double rcurc = sqrt((_coo[0] - _coo[2])*(_coo[0] - _coo[2]) + (_coo[1] - _coo[3])*(_coo[1] - _coo[3]));
 
-                double x1c = _coo[4] - _coo[2];
-                double y1c = _coo[5] - _coo[3];
                 double xcurc = _coo[0] - _coo[2];
                 double ycurc = _coo[1] - _coo[3];
-                double cro = x1c*ycurc - xcurc*y1c;
-                double a0 = atan2(y1c,x1c);
-                double acurc = atan2(ycurc,xcurc);
 
-//MOOLOG << "a = " << a << "  aO = " << _coo[7] << std::endl;
+                // Normalize endvec
+                xcurc *= (r/rcurc);
+                ycurc *= (r/rcurc);
+                _coo[0] = _coo[2] + xcurc;
+                _coo[1] = _coo[3] + ycurc;
 
                 if ( rcurc > 2*minPixelRes() ){
-                    xcurc *= r/rcurc;
-                    ycurc *= r/rcurc;
-                    double angle = acurc - a0;
-//MOOLOG << "angle before " << (180*angle/M_PI) << (_coo[6] < 0 ?"  cw":"  ccw") << "   _coo[6]*cro " << ((_coo[6]*cro < 0)?"-1":"1");
-                    if ( _coo[7] > 0 ) {  // CCW orig
-                        if ( cro > 0 ){
-                            if ( acurc * a0 > 0 ) {
-                                if ( angle > M_PI ) angle -= M_PI;
-                                if ( angle < -M_PI ) angle += M_PI;
-                            }
-                            else{
-                                if ( angle > M_PI ) angle -= 2*M_PI;
-                                if ( angle < -M_PI ) angle += 2*M_PI;
-                            }
-                        }
-                        else if ( cro < 0 ){
-                            if ( 0 <= angle && angle < M_PI ) angle += M_PI;
-                            else if ( angle < 0 ) angle += 2*M_PI;
-                        }
+                    if ( _coo[7] < 0 )
+                        drawArc(_coo[2],_coo[3], _coo[4],_coo[5], _coo[0],_coo[1] ,MODE_CONSTRUCTI);
+                    else{
+                        drawArc(_coo[2],_coo[3], _coo[0],_coo[1], _coo[4],_coo[5], MODE_CONSTRUCTI);
                     }
-                    else{ // CW
-                        if ( cro > 0 ){
-                            if ( 0 <= angle && angle < M_PI ) angle -= 2*M_PI;
-                            else if ( angle < 0 ) angle += 2*M_PI;
-                        }
-                        else if ( cro < 0 ){
-                            if ( acurc * a0 < 0 ) {
-                                if ( angle > M_PI ) angle -= 2*M_PI;
-                                if ( angle < -M_PI ) angle += 2*M_PI;
-                            }
-                            else{
-                                if ( angle > M_PI ) angle -= M_PI;
-                                if ( angle < -M_PI ) angle += M_PI;
-                            }
-                        }
-                    }
-                    _coo[6] = angle;
-//MOOLOG << "  angle after " << (180*angle/M_PI) << std::endl;
-                    drawArc(_coo[2],_coo[3], _coo[4],_coo[5], angle ,MODE_CONSTRUCTI);
-                    drawLine(_coo[2],_coo[3],_coo[2] + xcurc,_coo[3] + ycurc,MODE_CONSTRUCTI);
+
+                    drawLine(_coo[2],_coo[3],_coo[0],_coo[1],MODE_CONSTRUCTI);
                     drawLine(_coo[2],_coo[3],_coo[4],_coo[5],MODE_CONSTRUCTI);
                 }
             }

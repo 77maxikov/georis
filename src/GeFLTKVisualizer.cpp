@@ -166,7 +166,7 @@ void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<dou
         _glWindow->drawCircle(param[0],param[1],param[2],status);
         break;
     case georis::OT_ARC:
-        _glWindow->drawArc(param[0],param[1],param[2],param[3],param[4],status);
+        _glWindow->drawArc(param[0],param[1],param[2],param[3],param[4],param[5],status);
     default:
         ;
     }
@@ -269,17 +269,26 @@ void georis::GeFLTKVisualizer::cbDrawRect(Fl_Widget*w, void*d) {
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_RECT);
 }
 
+void georis::GeFLTKVisualizer::setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
+                         const std::vector< std::pair<UID,std::string> > &constrsSel,
+                                                const std::vector<georis::ConstraintType>& constrsAvail){
+
+    _infowin->setSelectionInfo(objsSel,constrsSel,constrsAvail);
+}
+
+/*
 void georis::GeFLTKVisualizer::setAvailConstraints(const std::vector<georis::ConstraintType> &constr) {
     MOOLOG << "GeFLTKVisualizer::setAvailConstraints called with " << constr.size() << " constraints " << std::endl;
-    _infowin->setAvailConstraints(constr);
+
 }
 void georis::GeFLTKVisualizer::setSelectedObjs(const std::map<UID,std::string> &objNames){
-    _infowin->setSelectedObjs(objNames);
+
 }
 void georis::GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
 
-    _infowin->setSelectedConstraints(constrNames);
+
 }
+*/
 
 /*
 void GeFLTKVisualizer::setSelectionParams(const std::vector<UIConstrInfo> &constrInfos,const GeoObjInfo *objInfo){

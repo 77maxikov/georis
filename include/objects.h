@@ -4,6 +4,8 @@
 #include <limits>
 #include "georis.h"
 
+#include "mooLog.h"
+
 namespace georis{
 
 struct point2r{
@@ -138,8 +140,8 @@ struct arcrep:public sketchObj {
     ptrep *center;
     ptrep *beg;
     ptrep *end;
-    double angle;
-    arcrep(ptrep *cent,ptrep *be,ptrep *en,double angl):center(cent),beg(be),end(en),angle(angl) {};
+
+    arcrep(ptrep *cent,ptrep *be,ptrep *en):center(cent),beg(be),end(en) {}
 
     double dist2point(double x_,double y_) const {
         double dxb = *(beg->x) - *(center->x);
@@ -157,7 +159,14 @@ struct arcrep:public sketchObj {
         double r = std::sqrt( dx*dx + dy*dy);
 
         double s = 0,f = 0;
-        if ( angle < 0 ){
+
+        double cro = dxb*dye - dxe*dyb;
+MOOLOG << "cro  = " << cro  <<
+          " phib = " << 180*phib/M_PI <<
+          " phie = " << 180*phie/M_PI <<
+          " phi = " << 180*phi/M_PI << std::endl;
+
+        if ( cro < 0 ){
             if ( phib > phie ){
                 s = phie;
                 f = phib;
@@ -168,27 +177,23 @@ struct arcrep:public sketchObj {
             }
         }
         else{
-            if ( phib > phie ){
+            if ( phib * phie < 0 ){
                 s = phie;
                 f = phib;
             }
             else{
-                s = phie - 2*M_PI;
+                s = phie;
                 f = phib;
             }
         }
 
-        if ( s <= phi && phi <= f )  return std::abs( rb - r );
+        MOOLOG << "s = " << 180*s/M_PI << " f = "<< 180*f/M_PI << std::endl;
+
+        if ( (s <= phi && phi <= f ) ||
+             (s+2*M_PI <= phi && phi <= f+2*M_PI ) ) return std::abs( rb - r );
 
         return std::numeric_limits<double>::infinity();
-    }
-
-    static double converten(double beOrig,double enOrig,bool CW){
-        if ( CW &&  enOrig < beOrig ){
-            if ( CW ) return enOrig + 2*M_PI;
-            else return enOrig + 2*M_PI;
-        }
-    }
+    }  
 
     bool inRect(double xtl,double ytl,double xbr,double ybr)const{
 
@@ -199,6 +204,29 @@ struct arcrep:public sketchObj {
     }
     virtual ObjectType type()const {
         return ObjectType::OT_ARC;
+    }
+    double angle(){
+        double dxb = *(beg->x) - *(center->x);
+        double dyb = *(beg->y) - *(center->y);
+        double phib = atan2(dyb,dxb);
+        double dxe = *(end->x) - *(center->x);
+        double dye = *(end->y) - *(center->y);
+        double phie = atan2(dye,dxe);
+        double a = phib - phie;
+        double cro = dxb*dye - dxe*dyb;
+        if ( cro > 0 ){
+            if ( a > M_PI )
+                return a;
+            else
+                return a - M_PI;
+        }
+        else{
+            if ( a > M_PI )
+                return a - M_PI;
+            else
+                return a;
+
+        }
     }
 };
 
