@@ -4,6 +4,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include "Fl_Toolbar.h"
+#include "FL/Fl_Box.h"
 
 #include "IVisualizer.h"
 //#include "uid.h"
@@ -23,6 +24,8 @@ public:
    virtual void reset(){
       _glWindow->redraw();
    }
+   void setStatusMessage(const char *msg);
+
    virtual void setController(georis::Controller *ctrl);
    virtual void drawObject(ObjectType type, const std::vector<double> &param,unsigned status = MODE_NORMAL);
 
@@ -42,11 +45,13 @@ public:
    static void cbDrawArc(Fl_Widget*, void*);
    static void cbDrawRect(Fl_Widget*, void*);
 
+
 private:
    georis::Controller *_controller;
    GeGlWindow *_glWindow;
    Fl_Toolbar *_toolbar;
    GeInfoWindow *_infowin;
+   Fl_Box *_statusbar;
 
 
    int handle(int event);

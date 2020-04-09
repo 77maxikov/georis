@@ -36,6 +36,8 @@
 #include "constrSymmetric_selected.xpm"
 #include "constrMidpoint.xpm"
 #include "constrMidpoint_selected.xpm"
+#include "constrConcentric.xpm"
+#include "constrConcentric_selected.xpm"
 
 
 #endif // XPMS_H_INCLUDED

@@ -18,7 +18,8 @@ GeGlWindow::GeGlWindow(int x,int y, int w,int h,const char *name):Fl_Gl_Window(x
     _zoomFactor = 0.9;
     _input_mode = georis::IM_NONE;
     _state = 0;
-
+    _controller = nullptr;
+    _statusbar = nullptr;
 }
 
 GeGlWindow::~GeGlWindow() {
@@ -57,7 +58,7 @@ int GeGlWindow::handle(int event){
     return Fl_Gl_Window::handle(event);
 }
 void GeGlWindow::processMouse(int button, int state, int x, int y) {
-    MOOLOG << "GeGlWindow::processMouse called" << std::endl;
+    MOOLOG << "GeGlWindow::processMouse called x " << x << " y " << y<< std::endl;
     double xCur,yCur;
     win2int(x,y,xCur,yCur);
 
@@ -66,7 +67,8 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
     case FL_LEFT_MOUSE:
         switch (state) {
         case FL_PUSH:
-            if (_controller) _controller->memHighlightsDown();
+            if (_controller)
+                _controller->memHighlightsDown();
 
             switch(_input_mode) {
             case georis::IM_LINE:
@@ -87,11 +89,14 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                 break;
             }
             case georis::IM_NONE:
+                _coo[0] = _coo[2] = xCur;
+                _coo[1] = _coo[3] = yCur;
                 if (_controller) {
                     double precision = 5*minPixelRes();
                     MOOLOG << "GeGlWindow:processMouse precision = " << precision << std::endl;
                     _controller->selectByPoint(xCur,yCur,precision);
                 }
+                _state = 1;
             }
             break;
         case FL_RELEASE:
@@ -135,13 +140,12 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                     break;
                 case 3:{
                     if ( _controller != nullptr ) {
-                        if ( _coo[7] < 0 ) {
+                        if ( _coo[7] > 0 ) {
                             _controller->addObject(georis::OT_ARC,{_coo[2],_coo[3],_coo[4],_coo[5], _coo[0],_coo[1]});
                         }
                         else{
                             _controller->addObject(georis::OT_ARC,{_coo[2],_coo[3], _coo[0],_coo[1],_coo[4],_coo[5]});
                         }
-
                     }
                     _state = 0;
                     break;
@@ -149,24 +153,26 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                 }
                 break;
             }
-            case georis::IM_RECT:
+            case georis::IM_RECT:{
                 if ( sqrt((_coo[2] - xCur)*(_coo[2] - xCur) + (_coo[3] - yCur)*(_coo[3] - yCur)) > 2*minPixelRes())
                     if (_controller) {
                         std::vector<double> tmp(4);
-                        tmp[0] = *(_coo+2); tmp[1] = *(_coo+3);tmp[2] = *(_coo+2); tmp[3] = *(_coo+5);
+                        tmp[0] = _coo[2]; tmp[1] = _coo[3];tmp[2] = _coo[2]; tmp[3] = yCur;
+                        _controller->addObject(georis::OT_SEGMENT,tmp);                        
+                        tmp[0] = _coo[2]; tmp[1] = _coo[3];tmp[2] = xCur; tmp[3] = _coo[3];
                         _controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = *(_coo+2); tmp[1] = *(_coo+5);tmp[2] = *(_coo+4); tmp[3] = *(_coo+5);
+                        tmp[0] = xCur; tmp[1] = yCur;tmp[2] = xCur; tmp[3] = _coo[3];
                         _controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = *(_coo+4); tmp[1] = *(_coo+5);tmp[2] = *(_coo+4); tmp[3] = *(_coo+3);
-                        _controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = *(_coo+4); tmp[1] = *(_coo+3);tmp[2] = *(_coo+2); tmp[3] = *(_coo+3);
+                        tmp[0] = xCur; tmp[1] = yCur;tmp[2] = _coo[2]; tmp[3] = yCur;
                         _controller->addObject(georis::OT_SEGMENT,tmp);
                     }
                 _state = 0;
                 break;
+            }
             case georis::IM_NONE:
-                if ( _state && _controller && sqrt((_coo[2]-_coo[4])*(_coo[2]-_coo[4]) + (_coo[3]-_coo[5])*(_coo[3]-_coo[5])) > 2*minPixelRes() )
-                    _controller->selectByRect( _coo[2],_coo[3],_coo[4],_coo[5]);
+                if ( (_controller != nullptr) && (std::sqrt((_coo[2]-xCur)*(_coo[2]-xCur) + (_coo[3]-yCur)*(_coo[3]-yCur)) > 2*minPixelRes()) )
+                    _controller->selectByRect( _coo[2],_coo[3],xCur,yCur);
+                _state = 0;
             }
         }
         break;
@@ -191,15 +197,16 @@ void GeGlWindow::processDrag(int x,int y){
     win2int(x,y,xCur,yCur);
     if ( _controller ) {
         _controller->highlightObj(xCur,yCur,3*minPixelRes());
-        _controller->moveSelected(xCur - _coo[0],yCur - _coo[1]);
+        _controller->moveSelected((xCur - _coo[0]),(yCur - _coo[1]));
     }
     // Update current pos
     _coo[0] = xCur;
     _coo[1] = yCur;
     redraw();
 }
+
 void GeGlWindow::processMove(int x,int y){
-    //MOOLOG << "GeGlWindow::processMove called" << std::endl;
+    //MOOLOG << "GeGlWindow::processMove x "<< x << " y "<< y << std::endl;
     double xCur,yCur;
     win2int(x,y,xCur,yCur);
     if ( _controller ) {
@@ -208,6 +215,13 @@ void GeGlWindow::processMove(int x,int y){
     // Update current pos
     _coo[0] = xCur;
     _coo[1] = yCur;
+
+    char buffer[64];
+    snprintf(buffer,sizeof(buffer),"%6.3f, %6.3f",xCur,yCur);
+
+    if ( _statusbar != nullptr )
+        _statusbar->copy_label(buffer);
+
     redraw();
 }
 
@@ -283,54 +297,19 @@ void GeGlWindow::drawCircle(double px, double py, double r,unsigned status) {
     glEnd();
 
 }
-/*
-void GeGlWindow::drawArc(double cx, double cy, double px,double py, double angle,unsigned status) {
-    setColor(status);
-    setStyle(status);
 
-    const int num_segments = 100;
-
-    //float theta = 2 * 3.1415926 / float(num_segments);
-    float theta = static_cast<float>(angle) / static_cast<float>(num_segments);
-
-    float tangetial_factor = tanf(theta);//calculate the tangential factor
-
-    float radial_factor = cosf(theta);//calculate the radial factor
-
-    float x = px - cx;
-    float y = py - cy;
-
-
-
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-
-    glBegin(GL_LINE_STRIP);
-    for(int ii = 0; ii < num_segments; ii++) 	{
-        glVertex2f(cx + x, cy + y);//output vertex
-
-        //calculate the tangential vector
-        //remember, the radial vector is (x, y)
-        //to get the tangential vector we flip those coordinates and negate one of them
-
-        float tx = -y;
-        float ty = x;
-
-        //add the tangential vector
-
-        x += tx * tangetial_factor;
-        y += ty * tangetial_factor;
-
-        //correct using the radial factor
-
-        x *= radial_factor;
-        y *= radial_factor;
-    }
-    glEnd();
-
-}
-*/
-void GeGlWindow::drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status){
+///
+/// \brief GeGlWindow::drawArc
+/// \param cx
+/// \param cy
+/// \param bx
+/// \param by
+/// \param ex
+/// \param ey
+/// \param status
+/// Draws arc with  center (cx,cy) from (bx,by) CCW to (ex,ey)
+///
+void GeGlWindow::drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status){    
     setColor(status);
     setStyle(status);
 
@@ -347,21 +326,15 @@ void GeGlWindow::drawArc(double cx, double cy, double bx,double by, double ex, d
     double cro = dxb*dye - dxe*dyb;
 
     double angle = phie - phib;
+
     if ( cro > 0 ){
-        if ( 0 <= angle && angle < M_PI )
-            angle -= 2*M_PI;
+        if ( phie < phib )
+            angle += 2*M_PI;
     }
     else if ( cro < 0 ){
-        if ( phib * phie < 0 ) {
-            if ( angle > M_PI ) angle -= 2*M_PI;
-            if ( angle < -M_PI ) angle += 2*M_PI;
-        }
-        else{
-            if ( angle > M_PI ) angle -= M_PI;
-            if ( angle < -M_PI ) angle += M_PI;
-        }
+        if ( phie < phib )
+            angle += 2*M_PI;
     }
-
 
     float theta = static_cast<float>(angle) / static_cast<float>(num_segments);
 
@@ -503,16 +476,16 @@ void GeGlWindow::win2int(int wx,int wy,double &ix,double &iy){
     iy = _top - wy*(_top - _bottom)/h();
 }
 void GeGlWindow::showMode(){
-    if (_input_mode != georis::IM_NONE && _state) {
+    if (_state) {
         switch (_input_mode) {
         case georis::IM_LINE:
             drawLine(_coo[2],_coo[3],_coo[0],_coo[1],MODE_NORMAL);
             break;
         case georis::IM_RECT:
-            drawLine(_coo[2],_coo[3],_coo[2],_coo[5],MODE_NORMAL);
-            drawLine(_coo[2],_coo[3],_coo[4],_coo[3],MODE_NORMAL);
-            drawLine(_coo[4],_coo[3],_coo[4],_coo[5],MODE_NORMAL);
-            drawLine(_coo[2],_coo[5],_coo[4],_coo[5],MODE_NORMAL);
+            drawLine(_coo[0],_coo[1],_coo[0],_coo[3],MODE_NORMAL);
+            drawLine(_coo[0],_coo[1],_coo[2],_coo[1],MODE_NORMAL);
+            drawLine(_coo[2],_coo[3],_coo[2],_coo[1],MODE_NORMAL);
+            drawLine(_coo[2],_coo[3],_coo[0],_coo[3],MODE_NORMAL);
             break;
         case georis::IM_CIRCLE:
             _coo[6] = sqrt((_coo[2] - _coo[0])*(_coo[2] - _coo[0]) + (_coo[3] - _coo[1])*(_coo[3] - _coo[1]));
@@ -527,13 +500,19 @@ void GeGlWindow::showMode(){
                 break;
             case 2:{
                 double r = sqrt((_coo[4] - _coo[0])*(_coo[4] - _coo[0]) + (_coo[5] - _coo[1])*(_coo[5] - _coo[1]));
-                if ( r > 2*minPixelRes() ){
+                if ( r > 100*minPixelRes() ){
                     // Remember direction to draw an arc
                     double x1c = _coo[4] - _coo[2];
                     double y1c = _coo[5] - _coo[3];
                     double xcurc = _coo[0] - _coo[2];
                     double ycurc = _coo[1] - _coo[3];
                     _coo[7] = x1c*ycurc - xcurc*y1c;
+/*
+MOOLOG << "==================================================================" << std::endl;
+MOOLOG << "minPixelRes() " << minPixelRes() << std::endl;
+MOOLOG << "GeGlWindow::showMode arc state 2 coo7   " << _coo[7] << " r = " << r << std::endl;
+MOOLOG << "==================================================================" << std::endl;
+*/
                     _state = 3;
                 }
                 break;
@@ -552,17 +531,25 @@ void GeGlWindow::showMode(){
                 _coo[1] = _coo[3] + ycurc;
 
                 if ( rcurc > 2*minPixelRes() ){
-                    if ( _coo[7] < 0 )
+                    if ( _coo[7] > 0 ) // CCW
                         drawArc(_coo[2],_coo[3], _coo[4],_coo[5], _coo[0],_coo[1] ,MODE_CONSTRUCTI);
-                    else{
+                    else
                         drawArc(_coo[2],_coo[3], _coo[0],_coo[1], _coo[4],_coo[5], MODE_CONSTRUCTI);
-                    }
+
 
                     drawLine(_coo[2],_coo[3],_coo[0],_coo[1],MODE_CONSTRUCTI);
-                    drawLine(_coo[2],_coo[3],_coo[4],_coo[5],MODE_CONSTRUCTI);
+                    //drawLine(_coo[2],_coo[3],_coo[4],_coo[5],MODE_CONSTRUCTI);
+                    drawLine(_coo[2],_coo[3],_coo[4],_coo[5],MODE_NORMAL);
                 }
             }
             }
+            break;
+        }
+        case georis::IM_NONE:{
+            drawLine(_coo[0],_coo[1],_coo[0],_coo[3],MODE_CONSTRUCTI);
+            drawLine(_coo[0],_coo[1],_coo[2],_coo[1],MODE_CONSTRUCTI);
+            drawLine(_coo[2],_coo[3],_coo[2],_coo[1],MODE_CONSTRUCTI);
+            drawLine(_coo[2],_coo[3],_coo[0],_coo[3],MODE_CONSTRUCTI);
         }
         }
     }

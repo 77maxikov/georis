@@ -78,7 +78,7 @@ struct ptrep:public point2r, public sketchObj {
         return std::sqrt( (*x -_x)*(*x -_x) + (*y -_y)*(*y -_y) );
     }
     bool inRect(double xtl,double ytl,double xbr,double ybr)const{
-            return ( xtl<= *x && *x <= xbr && ytl <= *y && *y <= ybr );
+            return ( xtl<= *x && *x <= xbr && ybr <= *y && *y <= ytl );
     }
     virtual ObjectType type()const {
         return ObjectType::OT_POINT;
@@ -110,8 +110,8 @@ struct lirep:public sketchObj {
         return ptl;
     }
     bool inRect(double xtl,double ytl,double xbr,double ybr)const{
-            return ( xtl<= *(beg->x) && *(beg->x) <= xbr && ytl <= *(beg->y) && *(beg->y) <= ybr &&
-                                     xtl<= *(end->x) && *(end->x) <= xbr && ytl <= *(end->y) && *(end->y) <= ybr );
+            return ( xtl<= *(beg->x) && *(beg->x) <= xbr && ybr <= *(beg->y) && *(beg->y) <= ytl &&
+                                     xtl<= *(end->x) && *(end->x) <= xbr && ybr <= *(end->y) && *(end->y) <= ytl );
     }
 
     virtual ObjectType type()const {
@@ -126,7 +126,7 @@ struct circrep:public sketchObj {
         return std::abs( std::sqrt((*(center->x) -_x)*(*(center->x) -_x) + (*(center->y) -_y)*(*(center->y) -_y) ) - *r);
     }
     bool inRect(double xtl,double ytl,double xbr,double ybr)const{
-            return ( xtl<= (*(center->x)-*r) && (*(center->x)+*r) <= xbr && ytl <= (*(center->y)-*r) && (*(center->y)+*r) <= ybr );
+            return ( xtl<= (*(center->x)-*r) && (*(center->x)+*r) <= xbr && ybr <= (*(center->y)-*r) && (*(center->y)+*r) <= ytl );
     }
             virtual void move(double dx,double dy){
                     center->move(dx,dy);
@@ -146,58 +146,62 @@ struct arcrep:public sketchObj {
     double dist2point(double x_,double y_) const {
         double dxb = *(beg->x) - *(center->x);
         double dyb = *(beg->y) - *(center->y);
-        double phib = atan2(dyb,dxb);
-        double rb = std::sqrt( dxb*dxb + dyb*dyb);
 
         double dxe = *(end->x) - *(center->x);
         double dye = *(end->y) - *(center->y);
-        double phie = atan2(dye,dxe);
 
         double dx = x_ - *(center->x);
         double dy = y_ - *(center->y);
-        double phi = atan2(dy,dx);
-        double r = std::sqrt( dx*dx + dy*dy);
 
-        double s = 0,f = 0;
+        double bxe = dxb*dye - dxe*dyb;
+        double bxt = dxb*dy - dx*dyb;
+        double txe = dx*dye - dxe*dy;
 
-        double cro = dxb*dye - dxe*dyb;
-MOOLOG << "cro  = " << cro  <<
-          " phib = " << 180*phib/M_PI <<
-          " phie = " << 180*phie/M_PI <<
-          " phi = " << 180*phi/M_PI << std::endl;
-
-        if ( cro < 0 ){
-            if ( phib > phie ){
-                s = phie;
-                f = phib;
-            }
-            else{
-                s = phie - 2*M_PI;
-                f = phib;
-            }
+        if ( bxe < 0 ){
+            if ( bxt < 0 && txe < 0 )
+                return std::numeric_limits<double>::infinity();
+            return std::abs( std::sqrt( dxb*dxb + dyb*dyb) - std::sqrt( dx*dx + dy*dy));
         }
         else{
-            if ( phib * phie < 0 ){
-                s = phie;
-                f = phib;
-            }
-            else{
-                s = phie;
-                f = phib;
-            }
+            if ( bxt > 0 && txe > 0 )
+                return std::abs( std::sqrt( dxb*dxb + dyb*dyb) - std::sqrt( dx*dx + dy*dy));
+            return std::numeric_limits<double>::infinity();
         }
-
-        MOOLOG << "s = " << 180*s/M_PI << " f = "<< 180*f/M_PI << std::endl;
-
-        if ( (s <= phi && phi <= f ) ||
-             (s+2*M_PI <= phi && phi <= f+2*M_PI ) ) return std::abs( rb - r );
-
-        return std::numeric_limits<double>::infinity();
     }  
 
     bool inRect(double xtl,double ytl,double xbr,double ybr)const{
+        double dxb = *(beg->x) - *(center->x);
+        double dyb = *(beg->y) - *(center->y);
+        double r = std::sqrt(dxb*dxb + dyb*dyb);
+        // test if arc's circle fully contained in rect
+        if ( xtl <= *(center->x)-r &&
+             *(center->x)+r <= xbr &&
+             *(center->y)+r <= ytl &&
+             ybr <= *(center->y)-r )
+            return true;
+        // test if arc's circle fully out of rect
+        if ( *(center->x)+r < xtl ||
+             xbr < *(center->x)-r ||
+             ytl < *(center->y)-r ||
+             *(center->y)+r  < ybr )
+            return false;
 
-        return true;// ( xtl<= (*(center->x)-*r) && (*(center->x)+*r) <= xbr && ytl <= (*(center->y)-*r) && (*(center->y)+*r) <= ybr );
+        double top = std::max( *(beg->y),*(end->y) ) ,
+               bottom = std::min( *(beg->y),*(end->y) ),
+               left = std::min( *(beg->x),*(end->x) ),
+               right = std::max( *(beg->x),*(end->x) );
+
+        // test if any of four points (N,W,S,E) are contained in arc
+        if ( !std::isinf(dist2point(*(center->x),*(center->y)+r)) )
+            top = *(center->y)+r;
+        if ( !std::isinf(dist2point(*(center->x),*(center->y)-r)) )
+            bottom = *(center->y)-r;
+        if ( !std::isinf(dist2point(*(center->x)-r,*(center->y))) )
+            left = *(center->x)-r;
+        if ( !std::isinf(dist2point(*(center->x)+r,*(center->y))) )
+            right = *(center->x)+r;
+
+        return (xtl <= left && right <= xbr && top <= ytl && ybr <= bottom);
     }
     virtual void move(double dx,double dy){
         center->move(dx,dy);

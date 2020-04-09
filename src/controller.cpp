@@ -42,7 +42,7 @@ void georis::Controller::setUI(IVisualizer *vis) {
     showSelectionInfo();
 }
 void georis::Controller::updateView() {
-    MOOLOG << "GeosController::updateView: " << m_objs.size() << " objects to update" << std::endl;
+    //MOOLOG << "Controller::updateView: " << m_objs.size() << " objects to update" << std::endl;
     for (auto it: m_objs){
         ObjectType objtype;
         std::vector<double> param;
@@ -144,6 +144,13 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
             addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
+        case OT_ARC:{
+            std::vector<UID> cobjs;
+            cobjs.push_back(chids[0]);
+            cobjs.push_back(m_memHighlights[0]);
+            addConstraint(CT_COINCIDENT,cobjs);
+            break;
+        }
         default:
             ;
         }
@@ -151,14 +158,9 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
 
     if ( m_memHighlights[1] != NOUID ){
         switch(type){
-        case OT_SEGMENT:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(chids[1]);
-            cobjs.push_back(m_memHighlights[1]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        case OT_CIRCLE:{
+        case OT_SEGMENT:
+        case OT_CIRCLE:
+        case OT_ARC:{
             std::vector<UID> cobjs;
             cobjs.push_back(chids[1]);
             cobjs.push_back(m_memHighlights[1]);
@@ -314,8 +316,8 @@ void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
     double ymin = std::min(y1,y2);
     double ymax = std::max(y1,y2);
 
-    point2r p1(&xmin,&ymin);
-    point2r p2(&xmax,&ymax);
+    point2r p1(&xmin,&ymax);
+    point2r p2(&xmax,&ymin);
     std::vector<UID> nearest;
     m_core.findObjInRect(p1,p2,nearest);
 
@@ -455,7 +457,10 @@ void georis::Controller::showSelectionInfo() {
         case OT_CIRCLE:
             ++nselCircls;
             //--nselPoints;
+            break;
         case OT_ARC:
+            ++nselArcs;
+            break;
         case OT_SPLINE:
         case OT_NONE:
             ;
@@ -467,8 +472,8 @@ void georis::Controller::showSelectionInfo() {
     MOOLOG << "Controller::showSelectionInfo: total selected "<< selected.size() << std::endl;
     MOOLOG << "  nPoints = "<< nselPoints << std::endl;
     MOOLOG << "  nLines = " << nselLines << std::endl;
-    MOOLOG << " nCircls = " << nselCircls << std::endl;
-    MOOLOG << " nArcs = " <<nselArcs << std::endl;
+    MOOLOG << "  nCircls = " << nselCircls << std::endl;
+    MOOLOG << "  nArcs = " <<nselArcs << std::endl;
 
 
 
@@ -493,12 +498,12 @@ void georis::Controller::showSelectionInfo() {
 
     // Show available constraints
     std::vector<ConstraintType>  constrsAvail;
-    if ( nselPoints || nselLines || nselCircls ) {
+    if ( nselPoints || nselLines || nselCircls || nselArcs) {
         constrsAvail.push_back(CT_FIX);
-        if ( nselPoints > 1 && nselLines == 0  && nselCircls == 0 ) // Only points selected
+        if ( nselPoints > 1 && nselLines == 0  && nselCircls == 0 && nselArcs == 0) // Only points selected
             constrsAvail.push_back(CT_COINCIDENT);
 
-        if ( nselPoints == 0 && nselLines > 0 && nselCircls == 0 ) { // Only lines are selected
+        if ( nselPoints == 0 && nselLines > 0 && nselCircls == 0 && nselArcs == 0) { // Only lines are selected
             constrsAvail.push_back(CT_VERTICAL);
             constrsAvail.push_back(CT_HORIZONTAL);
             if ( nselLines == 1)
@@ -513,8 +518,8 @@ void georis::Controller::showSelectionInfo() {
                 }
             }
         }
-        if ( nselPoints == 0 && nselLines == 0 ) { // Only circles selected
-            if ( nselCircls == 1 )
+        if ( nselPoints == 0 && nselLines == 0 && (nselCircls || nselArcs)) { // Only circles selected
+            if ( (nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1) )
                 constrsAvail.push_back(CT_DIMENSION);
             else{
                 constrsAvail.push_back(CT_EQUAL);
@@ -523,17 +528,17 @@ void georis::Controller::showSelectionInfo() {
             }
         }
         if ( nselPoints == 1 ){
-            if ( nselLines == 1 && nselCircls == 0 ){
+            if ( nselLines == 1 && nselCircls == 0 && nselArcs == 0){
                 constrsAvail.push_back(CT_COINCIDENT);
                 constrsAvail.push_back(CT_MIDPOINT);
             }
-            if ( nselCircls == 1 && nselLines == 0) {
+            if ( ((nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1)) && nselLines == 0) {
                 constrsAvail.push_back(CT_COINCIDENT);
             }
         }
-        if ( nselPoints == 2 && nselLines == 1 && nselCircls == 0 )
+        if ( nselPoints == 2 && nselLines == 1 && nselCircls == 0 && nselArcs == 0 )
             constrsAvail.push_back(CT_SYMMETRIC);
-        if ( nselPoints == 0 && nselLines == 1 && nselCircls == 1 )
+        if ( nselPoints == 0 && nselLines == 1 && ((nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1)) )
             constrsAvail.push_back(CT_TANGENT);
 
     }

@@ -1,6 +1,7 @@
 #ifndef _GEGLWINDOW_H
 #define _GEGLWINDOW_H
 #include <FL/Fl_Gl_Window.H>
+#include <FL/Fl_Box.H>
 #include "controller.h"
 
 class GeGlWindow:public Fl_Gl_Window{
@@ -8,6 +9,7 @@ class GeGlWindow:public Fl_Gl_Window{
       GeGlWindow(int x,int y, int w,int h,const char *name=0);
       ~GeGlWindow();
       void setController(georis::Controller *c){if (c) _controller = c;};
+      void setStatusBar(Fl_Box *b){_statusbar = b;};
       void drawPoint(double x, double y,unsigned status );
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
       void drawCircle(double x, double y, double r,unsigned status );
@@ -15,8 +17,12 @@ class GeGlWindow:public Fl_Gl_Window{
       void drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status);
       void setMode(georis::InputMode mode){_input_mode = mode; _state = 0;};
       virtual void resize(int x,int y, int w,int h);
+      double curX()const{return _coo[0];}
+      double curY()const{return _coo[1];}
+
    private:
       georis::Controller *_controller;
+      Fl_Box *_statusbar;
       float _left, _right, _top, _bottom;      
       double _coo[8];// _coo[0:1] - current _coo[]
       double _zoomFactor;

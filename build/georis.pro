@@ -20,8 +20,7 @@ INCLUDEPATH += ../include \
 SOURCES += ../src/test.cpp \   
    ../src/GeFLTKVisualizer.cpp \
    ../src/GeGlWindow.cpp \
-   ../src/GeInfoWindow.cpp \
-   ../src/GeVisualizer.cpp \
+   ../src/GeInfoWindow.cpp \   
    ../src/GeosFuncN.cpp \
    ../src/constraints/ConstrEqual.cpp \
    ../src/constraints/ConstrEqualAbs.cpp \

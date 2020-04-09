@@ -46,6 +46,7 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
     _constrbuttons[georis::ConstraintType::CT_EQUAL] = m_pActionToolbar->AddImageButton("Равны",new Fl_Pixmap(constrEqual_xpm),new Fl_Pixmap(constrEqual_selected_xpm), cbConstrEqual);
     _constrbuttons[georis::ConstraintType::CT_ANGLE] = m_pActionToolbar->AddImageButton("Угол",new Fl_Pixmap(constrAngle_xpm),new Fl_Pixmap(constrAngle_selected_xpm), cbConstrAngle);
     _constrbuttons[georis::ConstraintType::CT_SYMMETRIC] = m_pActionToolbar->AddImageButton("Симметрично",new Fl_Pixmap(constrSymmetric_xpm),new Fl_Pixmap(constrSymmetric_selected_xpm), cbConstrSymmetric);
+    _constrbuttons[georis::ConstraintType::CT_CONCENTRIC] = m_pActionToolbar->AddImageButton("Концентрические",new Fl_Pixmap(constrConcentric_xpm),new Fl_Pixmap(constrConcentric_selected_xpm), cbConstrConcentric);
 
     m_pActionToolbar->hide();
     for (auto bu : _constrbuttons)
@@ -132,6 +133,11 @@ void GeInfoWindow::cbConstrFix(Fl_Widget*w, void*d) {
     if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_FIX);
     if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->redraw();
 }
+void GeInfoWindow::cbConstrConcentric(Fl_Widget*w, void*d) {
+    if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_CONCENTRIC);
+    if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->redraw();
+}
+
 void GeInfoWindow::cbConstrDim(Fl_Widget*w, void*d) {
     const char* res = fl_input("Введите размер","1.0");
     if (res != 0){

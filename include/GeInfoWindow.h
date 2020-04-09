@@ -32,6 +32,7 @@ public:
    static void cbConstrAngle(Fl_Widget*w, void*d);
    static void cbConstrSymmetric(Fl_Widget*w, void*d);
    static void cbConstrMidpoint(Fl_Widget*w, void*d);
+   static void cbConstrConcentric(Fl_Widget*w, void*d);
 
 private:
    georis::Controller *_controller;

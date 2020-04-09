@@ -453,10 +453,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 else
                     uid = UIDGen::instance()->generate();
 
-
                 _constraints[uid] = cinfo;
 
-                cinfo.objs = uids;
+
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
 
@@ -487,7 +486,6 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                     uid = UIDGen::instance()->generate();
 
                 _constraints[uid] = cinfo;
-
 
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
@@ -808,39 +806,77 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
     case CT_TANGENT:{
     	std::map<ObjectType,std::vector<objInfo*> > grouped;
 		groupObj(uids,grouped);
-        if ( !grouped[OT_SEGMENT].empty() && grouped[OT_CIRCLE].size() == 1 ) {
-			circrep* ci = dynamic_cast<circrep*>(grouped[OT_CIRCLE][0]->obj);
-			for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
-				lirep* li = dynamic_cast<lirep*>(grouped[OT_SEGMENT][k]->obj);
+        if ( !grouped[OT_SEGMENT].empty() ) {
+            if ( grouped[OT_CIRCLE].size() == 1 ){
+                circrep* ci = dynamic_cast<circrep*>(grouped[OT_CIRCLE][0]->obj);
+                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
+                    lirep* li = dynamic_cast<lirep*>(grouped[OT_SEGMENT][k]->obj);
 
-				constrInfo cinfo;
-				cinfo.type = CT_TANGENT;
-				cinfo.constrs.resize(1);
+                    constrInfo cinfo;
+                    cinfo.type = CT_TANGENT;
+                    cinfo.constrs.resize(1);
 
-				cinfo.constrs[0].constr = new ConstrP2LDist(*(ci->center),*(li),ci->r,true);
-				cinfo.constrs[0].cparam.push_back(ci->center->x);
-				cinfo.constrs[0].cparam.push_back(ci->center->y);
-				cinfo.constrs[0].cparam.push_back(li->beg->x);
-                cinfo.constrs[0].cparam.push_back(li->beg->y);
-                cinfo.constrs[0].cparam.push_back(li->end->x);
-                cinfo.constrs[0].cparam.push_back(li->end->y);
-                cinfo.constrs[0].cparam.push_back(ci->r);
+                    cinfo.constrs[0].constr = new ConstrP2LDist(*(ci->center),*(li),ci->r,true);
+                    cinfo.constrs[0].cparam.push_back(ci->center->x);
+                    cinfo.constrs[0].cparam.push_back(ci->center->y);
+                    cinfo.constrs[0].cparam.push_back(li->beg->x);
+                    cinfo.constrs[0].cparam.push_back(li->beg->y);
+                    cinfo.constrs[0].cparam.push_back(li->end->x);
+                    cinfo.constrs[0].cparam.push_back(li->end->y);
+                    cinfo.constrs[0].cparam.push_back(ci->r);
 
-                cinfo.objs = uids;
+                    cinfo.objs = uids;
 
-                UID uid = NOUID;
-                if ( puid != nullptr ){
-                    if (*puid != NOUID )
-                        uid = *puid;
+                    UID uid = NOUID;
+                    if ( puid != nullptr ){
+                        if (*puid != NOUID )
+                            uid = *puid;
+                        else
+                            *puid = uid = UIDGen::instance()->generate();
+                    }
                     else
-                        *puid = uid = UIDGen::instance()->generate();
-                }
-                else
-                    uid = UIDGen::instance()->generate();
+                        uid = UIDGen::instance()->generate();
 
-				_constraints[uid] = cinfo;
-                MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
-                added = true;
+                    _constraints[uid] = cinfo;
+                    MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
+                    added = true;
+                }
+            }
+            if ( grouped[OT_ARC].size() == 1 ){
+                arcrep* ci = dynamic_cast<arcrep*>(grouped[OT_ARC][0]->obj);
+                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
+                    lirep* li = dynamic_cast<lirep*>(grouped[OT_SEGMENT][k]->obj);
+
+                    constrInfo cinfo;
+                    cinfo.type = CT_TANGENT;
+                    cinfo.constrs.resize(1);
+/*
+                    cinfo.constrs[0].constr = new ConstrPP2LDist(*(arc->center),*(li),ci->r,true);
+                    cinfo.constrs[0].cparam.push_back(ci->center->x);
+                    cinfo.constrs[0].cparam.push_back(ci->center->y);
+                    cinfo.constrs[0].cparam.push_back(li->beg->x);
+                    cinfo.constrs[0].cparam.push_back(li->beg->y);
+                    cinfo.constrs[0].cparam.push_back(li->end->x);
+                    cinfo.constrs[0].cparam.push_back(li->end->y);
+                    cinfo.constrs[0].cparam.push_back(ci->r);
+*/
+                    cinfo.objs = uids;
+
+                    UID uid = NOUID;
+                    if ( puid != nullptr ){
+                        if (*puid != NOUID )
+                            uid = *puid;
+                        else
+                            *puid = uid = UIDGen::instance()->generate();
+                    }
+                    else
+                        uid = UIDGen::instance()->generate();
+
+                    _constraints[uid] = cinfo;
+                    //MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
+                    added = true;
+                }
+
             }
         }
         break;
@@ -964,8 +1000,54 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             }
             added = true;
         }
-        break;
+        break;        
     }
+    case CT_CONCENTRIC:{
+        std::map<ObjectType,std::vector<objInfo*> > grouped;
+        groupObj(uids,grouped);
+
+        if ( grouped[OT_CIRCLE].size() > 1 ) {
+            for ( size_t k= 0; k < grouped[OT_CIRCLE].size()-1; ++k ) {
+                circrep* ci0 = dynamic_cast<circrep*>(grouped[OT_CIRCLE][k]->obj);
+                circrep* ci1 = dynamic_cast<circrep*>(grouped[OT_CIRCLE][k+1]->obj);
+
+
+                constrInfo cinfo;
+                cinfo.type = CT_CONCENTRIC;
+                cinfo.constrs.resize(2);
+
+                cinfo.constrs[0].constr = new ConstrEqual(ci0->center->x,ci1->center->x);
+                cinfo.constrs[0].cparam.push_back(ci0->center->x);
+                cinfo.constrs[0].cparam.push_back(ci1->center->x);
+
+                cinfo.constrs[1].constr = new ConstrEqual(ci0->center->y,ci1->center->y);
+                cinfo.constrs[1].cparam.push_back(ci0->center->y);
+                cinfo.constrs[1].cparam.push_back(ci1->center->y);
+
+                cinfo.objs = uids;
+
+                UID uid = NOUID;
+                if ( puid != nullptr ){
+                    if (*puid != NOUID )
+                        uid = *puid;
+                    else
+                        *puid = uid = UIDGen::instance()->generate();
+                }
+                else
+                    uid = UIDGen::instance()->generate();
+
+                _constraints[uid] = cinfo;
+
+                _objects[uids[0]].constrs.push_back(uid);
+                _objects[uids[1]].constrs.push_back(uid);
+
+                MOOLOG << "GeosController::tryAddConstraint - added concentric for circles " << *ci0->center << " and " << *ci1->center << std::endl;
+            }
+
+            added = true;
+        }
+    }
+
 
     default:
         MOOLOG << "Core:: Unhandled constraint type" << std::endl;

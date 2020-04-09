@@ -46,6 +46,15 @@ georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Doub
     _modebuttons[IM_ARC] = _toolbar->AddCheckButton("Дуга",new Fl_Pixmap(drawArc_xpm),new Fl_Pixmap(drawArc_selected_xpm), cbDrawArc,1);
     _toolbar->addDivider();
     _modebuttons[IM_RECT] = _toolbar->AddCheckButton("Прямоугольник",new Fl_Pixmap(drawRect_xpm),new Fl_Pixmap(drawRect_selected_xpm), cbDrawRect,1);
+
+    _statusbar = new Fl_Box(0,H-20,W,20);
+    _statusbar->box(FL_FLAT_BOX); // make the box 'flat' (no decorations)
+    _statusbar->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);// align status text to left/top of widget
+    _statusbar->color(48-2); // slightly darker than default FLTK widget color (48)
+
+    _glWindow->setStatusBar(_statusbar);
+
+    setStatusMessage("Hello");
     end();
 }
 
@@ -67,6 +76,7 @@ int georis::GeFLTKVisualizer::handle(int event) {
     }
 	return Fl_Double_Window::handle(event);
 }
+
 void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
     MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
 	_glWindow->setMode(mode);
@@ -96,6 +106,7 @@ MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
     case FL_Escape: // ESC
             _controller->resetHighlight();
             _controller->resetSelection();
+
 			setInputMode(IM_NONE);
         break;
     case FL_Delete: // DEL
@@ -172,18 +183,6 @@ void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<dou
     }
 
 }
-/*
-void georis::GeFLTKVisualizer::drawPoint(const double *x, const double *y,unsigned status) {
-
-}
-void georis::GeFLTKVisualizer::drawLine(const double *x1, const double *y1, const double *x2, const double *y2,unsigned status ) {
-
-}
-void georis::GeFLTKVisualizer::drawCircle(const double *x, const double *y, const double *r,unsigned status ) {
-
-}
-*/
-
 void georis::GeFLTKVisualizer::cbFileNew(Fl_Widget*w, void*d) {
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->createNew();
 }
@@ -302,3 +301,7 @@ void GeFLTKVisualizer::setSelectionParams(const std::vector<UIConstrInfo> &const
 
 }
 */
+void georis::GeFLTKVisualizer::setStatusMessage(const char *msg) {
+    _statusbar->copy_label(msg);
+    _statusbar->redraw();
+}
