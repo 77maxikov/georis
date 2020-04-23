@@ -18,7 +18,7 @@ public:
 
     void addObject(ObjectType type, const std::vector<double> &param,const std::string &name = std::string());
 
-    void selectByPoint(double x,double y,double precision = 0.01);
+    size_t selectByPoint(double x,double y,double precision = 0.01);
     void selectByRect(double x1,double y1,double x2,double y2);
 
     void deleteSelected();
@@ -49,9 +49,9 @@ private:
         std::string name;
     };
 
-    std::map<ObjectType,int> _lastObjNums;
+    std::map<ObjectType,int> m_lastObjNums;
 
-    std::map<ConstraintType,int> _lastConstrNums;
+    std::map<ConstraintType,int> m_lastConstrNums;
 
     std::map<UID,EInfo> m_objs;
     std::map<UID,EInfo> m_constrs;
@@ -63,6 +63,15 @@ private:
     void showSelectionInfo();
 
     void addConstraint(ConstraintType type, const std::vector<UID> &objects,double param = 0,const std::string &name = std::string());
+
+    void clearAll(){
+        m_memHighlights[0] = NOUID;
+        m_memHighlights[1] = NOUID;
+        m_lastObjNums.clear();
+        m_lastConstrNums.clear();
+        m_objs.clear();
+        m_constrs.clear();
+    }
 
     static const double _sel_precision;
 };

@@ -8,6 +8,8 @@
 	typedef unsigned UID;
 #endif
 
+#define NOUID UID(0)
+
 class UIDGen{
 	static UID _cur;
 	static UIDGen* _instance;
@@ -16,15 +18,18 @@ public:
 	static UIDGen* instance(){
         if ( _instance == nullptr ){
 			_instance = new UIDGen;
-			init(0);
+            init(NOUID);
 		}
 		return _instance;
 	}
-	static void init(unsigned st){ _cur = st;}
+    static void init(UID st){
+        _cur = st;
+    }
+
 	UID generate(){
 		return ++_cur;
 	}
 };
-#define NOUID UID(0)
+
 
 #endif // _UID_H

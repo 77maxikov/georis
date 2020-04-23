@@ -38,7 +38,7 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
     switch (type) {
     case OT_POINT: {        
         if (param.size() != 2 ) return RC_INVALIDARG;
-        if (puid){
+        if (puid != nullptr){
             if ( *puid == NOUID )   *puid = internalAddPoint(param[0],param[1]);
             else{
                 _params.push_back(param[0]);
@@ -55,9 +55,9 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
             internalAddPoint(param[0],param[1]);
         break;
     }
-    case OT_SEGMENT: {
-        if ( pchuids != nullptr ){
-            if ( pchuids->size() != 2 ) return RC_INVALIDARG;
+    case OT_SEGMENT: {        
+        if ( puid != nullptr && *puid != NOUID ) {
+            if ( pchuids == nullptr || pchuids->size() != 2) return RC_INVALIDARG;
             // validate if children are points
             auto ptit0 = _objects.find((*pchuids)[0]);
             if ( ptit0 == _objects.end() ) return RC_NO_OBJ;
@@ -70,71 +70,111 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
             info.obj = new lirep( dynamic_cast<ptrep*>( (*ptit0).second.obj ), dynamic_cast<ptrep*>( (*ptit1).second.obj ));
             info.objChilds[0] = (*pchuids)[0];
             info.objChilds[1] = (*pchuids)[1];
-
+            _objects[*puid] = info;
         }
-        else
+        else {
             if (param.size() != 4 ) return RC_INVALIDARG;
+            ptrep* pt1 = nullptr;
+            UID uidp1 = internalAddPoint(param[0],param[1],&pt1);
+            ptrep* pt2 = nullptr;
+            UID uidp2 = internalAddPoint(param[2],param[3],&pt2);
+            UID uid = UIDGen::instance()->generate();
+            objInfo info;
+            info.obj = new lirep(pt1,pt2);
+            info.objChilds[0] = uidp1;
+            info.objChilds[1] = uidp2;
+            _objects[uid] = info;
 
-        ptrep* pt1 = nullptr;
-        UID uidp1 = internalAddPoint(param[0],param[1],&pt1);
-        ptrep* pt2 = nullptr;
-        UID uidp2 = internalAddPoint(param[2],param[3],&pt2);
-        UID uid = UIDGen::instance()->generate();
-        objInfo info;
-        info.obj = new lirep(pt1,pt2);
-        info.objChilds[0] = uidp1;
-        info.objChilds[1] = uidp2;
-        _objects[uid] = info;
-        if (puid) *puid = uid;
-
+            if ( puid != nullptr ) *puid = uid;
+        }
         break;
     }
     case OT_CIRCLE: {
-        ptrep* pt = 0;
-        UID uidp = internalAddPoint(param[0],param[1],&pt);
-        _params.push_back(param[2]);
-        UID uid = UIDGen::instance()->generate();
-        objInfo info;
-        info.obj = new circrep(pt,&_params.back());
-        info.objChilds[0] = uidp;
-        _objects[uid] = info;
-        if (puid) *puid = uid;
-		break;
+        if ( puid != nullptr && *puid != NOUID ) {
+            if ( pchuids == nullptr || pchuids->size() != 1 ) return RC_INVALIDARG;
+
+            // validate if children are points
+            auto ptit0 = _objects.find((*pchuids)[0]);
+            if ( ptit0 == _objects.end() ) return RC_NO_OBJ;
+            if ( (*ptit0).second.obj->type() != OT_POINT ) return RC_INVALIDARG;
+
+            objInfo info;
+            _params.push_back(param[2]);
+            info.obj = new circrep( dynamic_cast<ptrep*>( (*ptit0).second.obj ),&_params.back());
+            info.objChilds[0] = (*pchuids)[0];
+            _objects[*puid] = info;
+        }
+        else{
+            ptrep* pt = nullptr;
+            UID uidp = internalAddPoint(param[0],param[1],&pt);
+            _params.push_back(param[2]);
+            UID uid = UIDGen::instance()->generate();
+            objInfo info;
+            info.obj = new circrep(pt,&_params.back());
+            info.objChilds[0] = uidp;
+            _objects[uid] = info;
+            if ( puid != nullptr ) *puid = uid;
+        }
+        break;
     }
     case OT_ARC:{
-        ptrep* ptc = nullptr;
-        UID uidc = internalAddPoint(param[0],param[1],&ptc);
-        ptrep* pts = nullptr;
-        UID uidp1 = internalAddPoint(param[2],param[3],&pts);
+        if ( puid != nullptr && *puid != NOUID ) {
+            if ( pchuids == nullptr || pchuids->size() != 3 ) return RC_INVALIDARG;
+            // validate if children are points
+            auto ptitc = _objects.find((*pchuids)[0]);
+            if ( ptitc == _objects.end() ) return RC_NO_OBJ;
+            if ( (*ptitc).second.obj->type() != OT_POINT ) return RC_INVALIDARG;
+            auto ptits = _objects.find((*pchuids)[1]);
+            if ( ptits == _objects.end() ) return RC_NO_OBJ;
+            if ( (*ptits).second.obj->type() != OT_POINT ) return RC_INVALIDARG;
+            auto ptitf = _objects.find((*pchuids)[2]);
+            if ( ptitf == _objects.end() ) return RC_NO_OBJ;
+            if ( (*ptitf).second.obj->type() != OT_POINT ) return RC_INVALIDARG;
 
-        double dx = param[2] - param[0];
-        double dy = param[3] - param[1];        
-        double r = std::sqrt(dx*dx + dy*dy);
+            objInfo info;
+            info.obj = new arcrep(dynamic_cast<ptrep*>( (*ptitc).second.obj ),
+                                  dynamic_cast<ptrep*>( (*ptits).second.obj ),
+                                  dynamic_cast<ptrep*>( (*ptitf).second.obj ));
+            info.objChilds[0] = (*pchuids)[0];
+            info.objChilds[1] = (*pchuids)[1];
+            info.objChilds[2] = (*pchuids)[2];
 
-        dx = param[4] - param[0];
-        dy = param[5] - param[1];
-        double re = std::sqrt(dx*dx+dy*dy);
+            _objects[*puid] = info;
+        }
+        else{
+            ptrep* ptc = nullptr;
+            UID uidc = internalAddPoint(param[0],param[1],&ptc);
+            ptrep* pts = nullptr;
+            UID uidp1 = internalAddPoint(param[2],param[3],&pts);
 
-        dx *= r/re;
-        dy *= r/re;
-        dx += param[0];
-        dy += param[1];
+            double dx = param[2] - param[0];
+            double dy = param[3] - param[1];
+            double r = std::sqrt(dx*dx + dy*dy);
 
-        ptrep* pte = nullptr;
-        UID uidp2 = internalAddPoint(dx,dy,&pte);
+            dx = param[4] - param[0];
+            dy = param[5] - param[1];
+            double re = std::sqrt(dx*dx+dy*dy);
 
-        UID uid = UIDGen::instance()->generate();
-        objInfo info;
-        info.obj = new arcrep(ptc,pts,pte);
-        info.objChilds[0] = uidc;
-        info.objChilds[1] = uidp1;
-        info.objChilds[2] = uidp2;
+            dx *= r/re;
+            dy *= r/re;
+            dx += param[0];
+            dy += param[1];
 
-        _objects[uid] = info;
-        if (puid) *puid = uid;
+            ptrep* pte = nullptr;
+            UID uidp2 = internalAddPoint(dx,dy,&pte);
 
-        RESCODE res = addConstraint(CT_EQUAL,{uidc,uidp1,uidc,uidp2});
+            UID uid = UIDGen::instance()->generate();
+            objInfo info;
+            info.obj = new arcrep(ptc,pts,pte);
+            info.objChilds[0] = uidc;
+            info.objChilds[1] = uidp1;
+            info.objChilds[2] = uidp2;
 
+            _objects[uid] = info;
+            if (puid) *puid = uid;
+
+            RESCODE res = addConstraint(CT_EQUAL,{uidc,uidp1,uidc,uidp2});
+        }
         break;
     }
     case OT_SPLINE:
@@ -1120,8 +1160,27 @@ void georis::Core::groupObj(const std::vector<UID> &uids, std::map<ObjectType,st
 		if ( objit == _objects.end() ) continue;
 		grouped[(*objit).second.obj->type()].push_back(&((*objit).second));
 	}
-	for (auto it = grouped.begin();it != grouped.end();++it)
-        MOOLOG << "georis::Core::groupObj type = " << (*it).first << " count " << (*it).second.size() << std::endl;
+
+    for (auto it = grouped.begin();it != grouped.end();++it){
+        MOOLOG << "georis::Core::groupObj type = ";
+        switch  ( (*it).first ){
+        case OT_POINT:
+            MOOLOG << "point";
+            break;
+        case OT_SEGMENT:
+            MOOLOG << "segment";
+            break;
+        case OT_CIRCLE:
+            MOOLOG << "circle";
+            break;
+        case OT_ARC:
+            MOOLOG << "arc";
+            break;
+        default :
+            MOOLOG << " ACHTUNG !!!";
+        }
+        MOOLOG << " count " << (*it).second.size() << std::endl;
+    }
 }
 int georis::Core::solve(){
 	auto t1 = Clock::now();

@@ -38,11 +38,11 @@ void GeGlWindow::resize(int x,int y, int ww,int hh){
 int GeGlWindow::handle(int event){
     switch (event){
     case FL_PUSH:
-        MOOLOG << "GeGlWindow::handle Mouse Pushed x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
+        //MOOLOG << "GeGlWindow::handle Mouse Pushed x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
         processMouse(Fl::event_button(),FL_PUSH,Fl::event_x(),Fl::event_y());
         return 1;
     case FL_RELEASE:
-        MOOLOG << "GeGlWindow::handle Mouse Released x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
+        //MOOLOG << "GeGlWindow::handle Mouse Released x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
         processMouse(Fl::event_button(),FL_RELEASE,Fl::event_x(),Fl::event_y());
         break;
     case FL_MOVE:
@@ -58,11 +58,11 @@ int GeGlWindow::handle(int event){
     return Fl_Gl_Window::handle(event);
 }
 void GeGlWindow::processMouse(int button, int state, int x, int y) {
-    MOOLOG << "GeGlWindow::processMouse called x " << x << " y " << y<< std::endl;
+    //MOOLOG << "GeGlWindow::processMouse called x " << x << " y " << y<< std::endl;
     double xCur,yCur;
     win2int(x,y,xCur,yCur);
 
-    MOOLOG << "GeGlWindow::processMouse button = " << button << ", state = " << state << std::endl;
+    //MOOLOG << "GeGlWindow::processMouse button = " << button << ", state = " << state << std::endl;
     switch (button) {
     case FL_LEFT_MOUSE:
         switch (state) {
@@ -94,9 +94,10 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                 if (_controller) {
                     double precision = 5*minPixelRes();
                     MOOLOG << "GeGlWindow:processMouse precision = " << precision << std::endl;
-                    _controller->selectByPoint(xCur,yCur,precision);
+                    if ( _controller->selectByPoint(xCur,yCur,precision) == 0 )
+                        _state = 1;
                 }
-                _state = 1;
+
             }
             break;
         case FL_RELEASE:

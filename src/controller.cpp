@@ -74,19 +74,19 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
     static char buf[bufsize];
 
     if (name.empty()) { // Create object's name
-        _lastObjNums[type]++;
+        m_lastObjNums[type]++;
         switch(type) {
         case OT_POINT:
-            snprintf(buf,bufsize,"Точка%d",_lastObjNums[type]);
+            snprintf(buf,bufsize,"Точка%d",m_lastObjNums[type]);
             break;
         case OT_SEGMENT:
-            snprintf(buf,bufsize,"Отрезок%d",_lastObjNums[type]);
+            snprintf(buf,bufsize,"Отрезок%d",m_lastObjNums[type]);
             break;
         case OT_CIRCLE:
-            snprintf(buf,bufsize,"Окружность%d",_lastObjNums[type]);
+            snprintf(buf,bufsize,"Окружность%d",m_lastObjNums[type]);
             break;
         case OT_ARC:
-            snprintf(buf,bufsize,"Дуга%d",_lastObjNums[type]);
+            snprintf(buf,bufsize,"Дуга%d",m_lastObjNums[type]);
             break;
         default:
             ;
@@ -111,8 +111,8 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         assert( res == RC_OK );
 
         if ( ot == OT_POINT ){
-            _lastObjNums[OT_POINT]++;
-            snprintf(buf,bufsize,"Точка%d",_lastObjNums[OT_POINT]);
+            m_lastObjNums[OT_POINT]++;
+            snprintf(buf,bufsize,"Точка%d",m_lastObjNums[OT_POINT]);
         }
         m_objs[chuid].status = 0;
         m_objs[chuid].name = buf;
@@ -189,52 +189,52 @@ void georis::Controller::addConstraint(ConstraintType type, const std::vector<UI
     static char buf[bufsize];
 
     if (name.empty()) { // Create object's name
-        _lastConstrNums[type]++;
+        m_lastConstrNums[type]++;
         switch(type) {
         case CT_FIX:
-            snprintf(buf,bufsize,"Зафиксировано%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Зафиксировано%d",m_lastConstrNums[type]);
             break;
         case CT_EQUAL:
-            snprintf(buf,bufsize,"Равно%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Равно%d",m_lastConstrNums[type]);
             break;
         case CT_VERTICAL:
-            snprintf(buf,bufsize,"Вертикально%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Вертикально%d",m_lastConstrNums[type]);
             break;
         case CT_HORIZONTAL:
-            snprintf(buf,bufsize,"Горизонтально%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Горизонтально%d",m_lastConstrNums[type]);
             break;
         case CT_DISTANCE:
-            snprintf(buf,bufsize,"Расстояние%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Расстояние%d",m_lastConstrNums[type]);
             break;
         case CT_ANGLE:
-            snprintf(buf,bufsize,"Угол%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Угол%d",m_lastConstrNums[type]);
             break;
         case CT_PARALLEL:
-            snprintf(buf,bufsize,"Параллельно%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Параллельно%d",m_lastConstrNums[type]);
             break;
         case CT_ORTHO:
-            snprintf(buf,bufsize,"Перпендикулярно%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Перпендикулярно%d",m_lastConstrNums[type]);
             break;
         case CT_TANGENT:
-            snprintf(buf,bufsize,"Касательно%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Касательно%d",m_lastConstrNums[type]);
             break;
         case CT_COINCIDENT:
-            snprintf(buf,bufsize,"Принадлежит%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Принадлежит%d",m_lastConstrNums[type]);
             break;
         case CT_MIDPOINT:
-            snprintf(buf,bufsize,"Середина%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Середина%d",m_lastConstrNums[type]);
             break;
         case CT_COLLINEAR:
-            snprintf(buf,bufsize,"Колинеарно%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Колинеарно%d",m_lastConstrNums[type]);
             break;
         case CT_DIMENSION:
-            snprintf(buf,bufsize,"Размер%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Размер%d",m_lastConstrNums[type]);
             break;
         case CT_SYMMETRIC:
-            snprintf(buf,bufsize,"Симметрично%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Симметрично%d",m_lastConstrNums[type]);
             break;
         case CT_CONCENTRIC:
-            snprintf(buf,bufsize,"Концентрично%d",_lastConstrNums[type]);
+            snprintf(buf,bufsize,"Концентрично%d",m_lastConstrNums[type]);
         }
 
         m_constrs[uid].name = buf;
@@ -255,59 +255,62 @@ void georis::Controller::resetSelection() {
     }
     showSelectionInfo();
 }
-void georis::Controller::selectByPoint(double x,double y,double precision) {
+size_t georis::Controller::selectByPoint(double x,double y,double precision) {
     point2r p(&x,&y);
     std::vector<UID> nearest;
     std::vector<double> dists;
     m_core.findObjInCirc(p,precision,nearest,&dists);
 
-    if ( !nearest.empty() ){
-        std::map<ObjectType,std::map<double,UID> >	 sorter;
-        for ( size_t k = 0 ; k < nearest.size();++k ){
-
-            ObjectType ot;
-            std::vector<double> param;
-            m_core.queryObjInfo(nearest[k],ot, param);
-            sorter[ot][dists[k]] = nearest[k];
-
-        }
-
-        if ( sorter.find(OT_POINT) != sorter.end() ){
-            m_objs[ (*sorter[OT_POINT].begin()).second ].status ^= MODE_SELECTED;
-            MOOLOG << "Controller::selectByPoint size " << m_objs.size() << std::endl;
-            showSelectionInfo();
-            return;
-        }
-        double bestdist = std::numeric_limits<double>::infinity();
-        ObjectType bestt = OT_NONE;
-        for ( auto it  = sorter.begin(); it != sorter.end();++it ){
-            double di = (*((*it).second.begin())).first;
-            if ( di < bestdist ){
-                bestdist = di;
-                bestt = (*it).first;
-            }
-        }
-        UID sel = (*sorter[bestt].begin()).second;
-
-        UID par;
-        m_core.getObjParent(sel,par);
-        if ( par != NOUID  &&  (m_objs[par].status & MODE_SELECTED) && (m_objs[sel].status & MODE_SELECTED) ) return;
-
-        m_objs[sel].status ^= MODE_SELECTED;
-
-        unsigned status = m_objs[sel].status;
-
-        std::vector<UID> subs;
-        m_core.getObjChilds(sel,subs);
-        if ( !subs.empty() )
-            for ( size_t s = 0 ; s < subs.size();++s )
-                m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
-        showSelectionInfo();
-    }
-    else
+    if ( nearest.empty() ) {
         resetSelection();
+        return 0;
+    }
+
+
+    std::map<ObjectType,std::map<double,UID> >	 sorter;
+    for ( size_t k = 0 ; k < nearest.size();++k ){
+
+        ObjectType ot;
+        std::vector<double> param;
+        m_core.queryObjInfo(nearest[k],ot, param);
+        sorter[ot][dists[k]] = nearest[k];
+
+    }
+
+    if ( sorter.find(OT_POINT) != sorter.end() ){
+        m_objs[ (*sorter[OT_POINT].begin()).second ].status ^= MODE_SELECTED;
+        MOOLOG << "Controller::selectByPoint size " << m_objs.size() << std::endl;
+        showSelectionInfo();
+        return 1;
+    }
+    double bestdist = std::numeric_limits<double>::infinity();
+    ObjectType bestt = OT_NONE;
+    for ( auto it  = sorter.begin(); it != sorter.end();++it ){
+        double di = (*((*it).second.begin())).first;
+        if ( di < bestdist ){
+            bestdist = di;
+            bestt = (*it).first;
+        }
+    }
+    UID sel = (*sorter[bestt].begin()).second;
+
+    UID par;
+    m_core.getObjParent(sel,par);
+    if ( par != NOUID  &&  (m_objs[par].status & MODE_SELECTED) && (m_objs[sel].status & MODE_SELECTED) ) return 0;
+
+    m_objs[sel].status ^= MODE_SELECTED;
+
+    unsigned status = m_objs[sel].status;
+
+    std::vector<UID> subs;
+    m_core.getObjChilds(sel,subs);
+    if ( !subs.empty() )
+        for ( size_t s = 0 ; s < subs.size();++s )
+            m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
+    showSelectionInfo();
 
     MOOLOG << "Controller::selectByPoint L size " << m_objs.size() << std::endl;
+    return 1;    
 }
 
 void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
@@ -469,7 +472,7 @@ void georis::Controller::showSelectionInfo() {
         objsSel.push_back( std::make_pair(it,m_objs[it].name) );
     }
 
-    MOOLOG << "Controller::showSelectionInfo: total selected "<< selected.size() << std::endl;
+    MOOLOG << "Controller::showSelectionInfo: " << m_objs.size() << " total objects, selected "<< selected.size() << std::endl;
     MOOLOG << "  nPoints = "<< nselPoints << std::endl;
     MOOLOG << "  nLines = " << nselLines << std::endl;
     MOOLOG << "  nCircls = " << nselCircls << std::endl;
@@ -626,8 +629,9 @@ void georis::Controller::saveTo(const std::string &fname){
         }
     }
 }
-void georis::Controller::loadFrom(const std::string &fname){
+void georis::Controller::loadFrom(const std::string &fname){    
     m_core = Core();
+    clearAll();
 
     SVGXReader reader;
     RESCODE res = reader.load(fname.c_str());
@@ -648,6 +652,10 @@ void georis::Controller::loadFrom(const std::string &fname){
             MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
             return;
         }
+
+        EInfo info = {MODE_NORMAL,name};
+        m_objs[uid] = info;
+
         if ( uidpar != NOUID ){
             // read until parent object is found
             // push child obj UID
@@ -655,7 +663,7 @@ void georis::Controller::loadFrom(const std::string &fname){
             chuids.push_back(uid);
 
             UID par2load = uidpar;
-            std::string namepar(name);
+            //std::string namepar(name);
             do {
                 if ( (res = reader.loadObject(uid,name,ot,params,uidpar)) != RC_OK ){
                     // ACHTUNG !! Not finished reading of parent and siblings
@@ -680,7 +688,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                         MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
                         return;
                     }
-                    EInfo info = {MODE_NORMAL,namepar};
+                    EInfo info = {MODE_NORMAL,name};
                     m_objs[uid] = info;
                     break;
                 }
@@ -691,11 +699,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                 }
             }
             while ( true );
-        }
-        else {
-            EInfo info = {MODE_NORMAL,name};
-            m_objs[uid] = info;
-        }
+        }        
     }
 
     std::vector<UID> contrainedObjUIDs;
@@ -710,5 +714,11 @@ void georis::Controller::loadFrom(const std::string &fname){
         EInfo info = {MODE_NORMAL,name};
         m_constrs[uid] = info;
     }
+MOOLOG << "Controller::loadFrom: latest UID " << uid << std::endl;
+
+    UIDGen *gen = UIDGen::instance();
+    gen->init(uid);
+    //UIDGen::init( uid );
+
     updateView();
 }

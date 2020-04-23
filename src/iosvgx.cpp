@@ -1,3 +1,4 @@
+#include <cassert>
 #include "iosvgx.h"
 
 
@@ -29,6 +30,7 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         tinyxml2::XMLElement *elem = m_Doc.NewElement("point");
         if (elem == nullptr) return RC_RUNTIME_ERR;
         elem->SetAttribute("id",static_cast<unsigned>(uid));
+        assert(params.size() == 2);
         elem->SetAttribute("x",params[0]);
         elem->SetAttribute("y",params[1]);
         elem->SetAttribute("name",name.c_str());
@@ -43,6 +45,7 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         tinyxml2::XMLElement *elem = m_Doc.NewElement("line");
         if (elem == nullptr) return RC_RUNTIME_ERR;
         elem->SetAttribute("id",(unsigned)uid);
+        assert(params.size() == 4);
         elem->SetAttribute("x1",params[0]);
         elem->SetAttribute("y1",params[1]);
         elem->SetAttribute("x2",params[2]);
@@ -61,6 +64,7 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         tinyxml2::XMLElement *elem = m_Doc.NewElement("circle");
         if (elem == nullptr) return RC_RUNTIME_ERR;
         elem->SetAttribute("id",(unsigned)uid);
+        assert(params.size() == 3);
         elem->SetAttribute("x",params[0]);
         elem->SetAttribute("y",params[1]);
         elem->SetAttribute("r",params[2]);
@@ -72,9 +76,28 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         m_RootElem->InsertEndChild(elem);
         break;
     }
-    case OT_ARC:
+    case OT_ARC:{
+        tinyxml2::XMLElement *elem = m_Doc.NewElement("arc");
+        if (elem == nullptr) return RC_RUNTIME_ERR;
+        elem->SetAttribute("id",(unsigned)uid);
+        assert(params.size() == 6);
+        elem->SetAttribute("xc",params[0]);
+        elem->SetAttribute("yc",params[1]);
+        elem->SetAttribute("xs",params[2]);
+        elem->SetAttribute("ys",params[3]);
+        elem->SetAttribute("xf",params[4]);
+        elem->SetAttribute("yf",params[5]);
+        elem->SetAttribute("name",name.c_str());
+
+        elem->SetAttribute("stroke",STROKE_COLOR);
+        elem->SetAttribute("stroke-width",STROKE_WIDTH);
+
+        m_RootElem->InsertEndChild(elem);
+
         break;
+    }
     default:
+
         break;
     }
 
@@ -140,6 +163,11 @@ RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("y1", &(params[1])) ) return RC_RUNTIME_ERR;
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("x2", &(params[2])) ) return RC_RUNTIME_ERR;
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("y2", &(params[3])) ) return RC_RUNTIME_ERR;
+
+        const char *szName = nullptr;
+        if ( nullptr == (szName = m_CurrentElem->Attribute("name")) ) return RC_RUNTIME_ERR;
+        name = szName;
+
         parent = NOUID;
     }
     else if ( strncmp("circle",m_CurrentElem->Name(),6) == 0 ){
@@ -148,8 +176,27 @@ RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("x", &(params[0])) ) return RC_RUNTIME_ERR;
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("y", &(params[1])) ) return RC_RUNTIME_ERR;
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("r", &(params[2])) ) return RC_RUNTIME_ERR;
+        const char *szName = nullptr;
+        if ( nullptr == (szName = m_CurrentElem->Attribute("name")) ) return RC_RUNTIME_ERR;
+        name = szName;
+
         parent = NOUID;
     }
+    else if ( strncmp("arc",m_CurrentElem->Name(),3) == 0 ){
+        ot = OT_ARC;
+        params.resize(6);
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("xc", &(params[0])) ) return RC_RUNTIME_ERR;
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("yc", &(params[1])) ) return RC_RUNTIME_ERR;
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("xs", &(params[2])) ) return RC_RUNTIME_ERR;
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("ys", &(params[3])) ) return RC_RUNTIME_ERR;
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("xf", &(params[4])) ) return RC_RUNTIME_ERR;
+        if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("yf", &(params[5])) ) return RC_RUNTIME_ERR;
+        const char *szName = nullptr;
+        if ( nullptr == (szName = m_CurrentElem->Attribute("name")) ) return RC_RUNTIME_ERR;
+        name = szName;
+        parent = NOUID;
+    }
+
     else return RC_NO_OBJ;
     m_CurrentElem = m_CurrentElem->NextSiblingElement();
     return RC_OK;
