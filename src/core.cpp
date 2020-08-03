@@ -499,7 +499,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
 
-                MOOLOG << "GeosController::tryAddConstraint - added distance " << param << " between points " << *pt0 << " and " << *pt1 << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added distance " << param << " between points " << *pt0 << " and " << *pt1 << std::endl;
             } else {
                 constrInfo cinfo;
                 cinfo.type = CT_COINCIDENT;
@@ -530,7 +530,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
 
-                MOOLOG << "GeosController::tryAddConstraint - added coincident "<< *pt0 << " and " << *pt1 <<" with uid " << uid <<  std::endl;
+                MOOLOG << "Core::tryAddConstraint - added coincident "<< *pt0 << " and " << *pt1 <<" with uid " << uid <<  std::endl;
             }
             added = true;
         } else if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
@@ -568,7 +568,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 			_objects[uids[0]].constrs.push_back(uid);
 			_objects[uids[1]].constrs.push_back(uid);
 
-            MOOLOG << "GeosController::tryAddConstraint - added distance "<<param << " between point " << *pt << " and line " << *line << " with uid " << uid << std::endl;
+            MOOLOG << "Core::tryAddConstraint - added distance "<<param << " between point " << *pt << " and line " << *line << " with uid " << uid << std::endl;
             added = true;
 		}
         else if ( uids.size() == grouped[OT_SEGMENT].size() ) { // Line segment lengths
@@ -592,7 +592,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
                     IConstraint *constraint = new ConstrP2PDist(*line->beg,*line->end,&_params.back());
                     _con_par[constraint ] = cp;
-                    MOOLOG << "GeosController::addConstraint - added length "<<param << " for line " << *line << std::endl;
+                    MOOLOG << "Core::addConstraint - added length "<<param << " for line " << *line << std::endl;
                 }
                 added = true;
 */
@@ -602,7 +602,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 				circrep* ci = dynamic_cast<circrep*>(grouped[OT_CIRCLE][k]->obj);
                 _const_params.insert(ci->r);
                 *(ci->r) = param;
-                MOOLOG << "GeosController::tryAddConstraint - added radius" <<param << " for circle (" <<  *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
+                MOOLOG << "Core::tryAddConstraint - added radius" <<param << " for circle (" <<  *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
             }
             /*
             UID uid = NOUID;
@@ -662,7 +662,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             _objects[uids[0]].constrs.push_back(uid);
             _objects[uids[1]].constrs.push_back(uid);
 
-            MOOLOG << "GeosController::tryAddConstraint - added ortho between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
+            MOOLOG << "Core::tryAddConstraint - added ortho between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
             added = true;
         }
         break;
@@ -712,7 +712,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 _objects[uids[k+1]].constrs.push_back(uid);
 
 
-                MOOLOG << "GeosController::tryAddConstraint - added parallel between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added parallel between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
             }
             added = true;
         }
@@ -748,7 +748,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
                 _objects[uids[k]].constrs.push_back(uid);
 
-                MOOLOG << "GeosController::tryAddConstraint - added vertical for line " << *li << " with uid " << uid << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added vertical for line " << *li << " with uid " << uid << std::endl;
             }
             added = true;
         }
@@ -784,7 +784,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
 				_objects[uids[k]].constrs.push_back(uid);
 
-                MOOLOG << "GeosController::tryAddConstraint - added horizontal for line " << *li << " with uid " << uid << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added horizontal for line " << *li << " with uid " << uid << std::endl;
             }
             added = true;
         }
@@ -837,7 +837,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 				_constraints[uid] = cinfo;
 
 
-                MOOLOG << "GeosController::tryAddConstraint - added collinear between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added collinear between line " << *line0 << " and line " << *line1 << " with uid " << uid << std::endl;
             }
             added = true;
         }
@@ -878,7 +878,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                         uid = UIDGen::instance()->generate();
 
                     _constraints[uid] = cinfo;
-                    MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
+                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
                     added = true;
                 }
             }
@@ -913,7 +913,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                         uid = UIDGen::instance()->generate();
 
                     _constraints[uid] = cinfo;
-                    //MOOLOG << "GeosController::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
+                    //MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< " with uid " << uid << std::endl;
                     added = true;
                 }
 
@@ -952,7 +952,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
 				_constraints[uid] = cinfo;
 
-                MOOLOG << "GeosController::tryAddConstraint - added equal radius for circles " << *ci0->center << " and " << *ci1->center << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added equal radius for circles " << *ci0->center << " and " << *ci1->center << std::endl;
             }
 
             added = true;
@@ -992,7 +992,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
 				_constraints[uid] = cinfo;
 
-                MOOLOG << "GeosController::tryAddConstraint - added equal for lines " << *line0 << " and " << *line1 << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added equal for lines " << *line0 << " and " << *line1 << std::endl;
 
             }
             added = true;
@@ -1035,7 +1035,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
                 _constraints[uid] = cinfo;
 
-                MOOLOG << "GeosController::tryAddConstraint - added equal for points " << *pb1 << " and " << *pe1 << " and " << *pb2 << " and " << *pe2 << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added equal for points " << *pb1 << " and " << *pe1 << " and " << *pb2 << " and " << *pe2 << std::endl;
 
             }
             added = true;
@@ -1081,7 +1081,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 _objects[uids[0]].constrs.push_back(uid);
                 _objects[uids[1]].constrs.push_back(uid);
 
-                MOOLOG << "GeosController::tryAddConstraint - added concentric for circles " << *ci0->center << " and " << *ci1->center << std::endl;
+                MOOLOG << "Core::tryAddConstraint - added concentric for circles " << *ci0->center << " and " << *ci1->center << std::endl;
             }
 
             added = true;
@@ -1112,11 +1112,11 @@ RESCODE georis::Core::addConstraint(ConstraintType type,const std::vector<UID> &
 		}
 	}
 
-    MOOLOG << "georis::Core::addConstraint " << uids.size() << " objects" << std::endl;
+    MOOLOG << "Core::addConstraint " << uids.size() << " objects" << std::endl;
 
 	backupState();
     RESCODE res = tryAddConstraint(type,uids,param,puid);
-    MOOLOG << "georis::Core::addConstraint " << res << " tac" << std::endl;
+    MOOLOG << "Core::addConstraint " << res << " tac" << std::endl;
     if ( RC_OK != res ) return res;
 	res = solve();
     if ( RC_OK == res ) return res;
@@ -1162,7 +1162,7 @@ void georis::Core::groupObj(const std::vector<UID> &uids, std::map<ObjectType,st
 	}
 
     for (auto it = grouped.begin();it != grouped.end();++it){
-        MOOLOG << "georis::Core::groupObj type = ";
+        MOOLOG << "Core::groupObj type = ";
         switch  ( (*it).first ){
         case OT_POINT:
             MOOLOG << "point";
@@ -1185,15 +1185,15 @@ void georis::Core::groupObj(const std::vector<UID> &uids, std::map<ObjectType,st
 int georis::Core::solve(){
 	auto t1 = Clock::now();
 	if ( !_constraints.empty() ) {
-        MOOLOG << "georis::Core::solve - there are "<< _constraints.size() << " constraints" << std::endl;
+        MOOLOG << "Core::solve - there are "<< _constraints.size() << " constraints" << std::endl;
 
         // collect constraints for parameters and parameters for constraints
         std::map<double *, std::vector<IConstraint *> > p2c;
         std::map<IConstraint *,std::vector<double *> > c2p;
         for (auto cit = _constraints.begin(); cit != _constraints.end(); ++cit) {
-            MOOLOG << "georis::Core::solve -  (*cit).second.constrs.size() = " << (*cit).second.constrs.size() << std::endl;
+            MOOLOG << "Core::solve -  (*cit).second.constrs.size() = " << (*cit).second.constrs.size() << std::endl;
 			for (size_t nc = 0;nc < (*cit).second.constrs.size();++nc){
-                //MOOLOG << "georis::Core::solve -  (*cit).second.constrs[nc].cparam.size() = " << (*cit).second.constrs[nc].cparam.size() << std::endl;
+                //MOOLOG << "Core::solve -  (*cit).second.constrs[nc].cparam.size() = " << (*cit).second.constrs[nc].cparam.size() << std::endl;
 				for (auto pit = (*cit).second.constrs[nc].cparam.begin(); pit != (*cit).second.constrs[nc].cparam.end(); ++pit){
 					p2c[*pit].push_back( (*cit).second.constrs[nc].constr);
                     //MOOLOG << *pit << std::endl;
@@ -1201,9 +1201,9 @@ int georis::Core::solve(){
 				c2p[ (*cit).second.constrs[nc].constr ] = (*cit).second.constrs[nc].cparam;
 			}
         }
-//        MOOLOG << "georis::Core::solve - p2c.size() = " << p2c.size() << std::endl;
-        //MOOLOG << "georis::Core::solve - c2p.size() = " << c2p.size() << std::endl;
-        //MOOLOG << "georis::Core::solve - c2p[0].size() = " << (*c2p.begin()).second.size() << std::endl;
+//        MOOLOG << "Core::solve - p2c.size() = " << p2c.size() << std::endl;
+        //MOOLOG << "Core::solve - c2p.size() = " << c2p.size() << std::endl;
+        //MOOLOG << "Core::solve - c2p[0].size() = " << (*c2p.begin()).second.size() << std::endl;
 
         // extract constraints groups
         std::list<std::list<IConstraint*> > constrGroups;
@@ -1235,17 +1235,17 @@ int georis::Core::solve(){
 
         }
 
-        MOOLOG << "georis::Core::solve - constrGroups.size() = " << constrGroups.size() << std::endl;
+        MOOLOG << "Core::solve - constrGroups.size() = " << constrGroups.size() << std::endl;
 
 
 
         for (auto cgi = constrGroups.begin(); cgi != constrGroups.end(); ++cgi) {
-            MOOLOG << "georis::Core::solve group size " << (*cgi).size() << std::endl;
+            MOOLOG << "Core::solve group size " << (*cgi).size() << std::endl;
             std::set<double*> param_sorter;
             for (auto ci = (*cgi).begin(); ci != (*cgi).end(); ++ci) {
                 auto mi = c2p.find(*ci);
                 if ( mi != c2p.end() ){
-                    MOOLOG << "georis::Core::solve param size" << (*mi).second.size() << std::endl;
+                    MOOLOG << "Core::solve param size" << (*mi).second.size() << std::endl;
                     for (auto vi = (*mi).second.begin(); vi != (*mi).second.end(); ++vi)
                         param_sorter.insert(*vi);
                 }
@@ -1281,7 +1281,7 @@ int georis::Core::solve(){
 					}
                 }
             }
-            MOOLOG << "georis::Core::solve - there are "<< param_sorter.size() << " tunable params" << std::endl;
+            MOOLOG << "Core::solve - there are "<< param_sorter.size() << " tunable params" << std::endl;
             std::vector<double *> params;
             params.reserve(param_sorter.size());
             for (auto it = param_sorter.begin(); it != param_sorter.end(); ++it)
@@ -1321,13 +1321,13 @@ int georis::Core::solve(){
     }
     //MOOLOG << "=============================" << std::endl;
 	auto t2 = Clock::now();
-    MOOLOG << "georis::Core::solve Delta t2-t1: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
+    MOOLOG << "Core::solve Delta t2-t1: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << " ms" << std::endl;
 	return 0;
 }
 RESCODE georis::Core::moveObjects(const std::vector<UID>& objs,double dx, double dy){
 	auto objsnochi(objs);
     filterChildObj(objsnochi);
-    MOOLOG << "georis::Core::moveObjects moving " << objsnochi.size() << std::endl;
+    MOOLOG << "Core::moveObjects moving " << objsnochi.size() << std::endl;
 	backupState();
     for (auto v:objsnochi){
 		auto it = _objects.find(v);
@@ -1336,7 +1336,7 @@ RESCODE georis::Core::moveObjects(const std::vector<UID>& objs,double dx, double
     }
     int res = solve();
 	if ( 0 == res ) return res;
-    MOOLOG << "georis::Core::moveObjects infeasible move, restoring " << std::endl;
+    MOOLOG << "Core::moveObjects infeasible move, restoring " << std::endl;
 	restoreState();
 	return res;
 }

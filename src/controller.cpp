@@ -50,7 +50,7 @@ void georis::Controller::updateView() {
         if ( res != RC_OK ){
             MOOLOG << "Controller::updateView no such obj with uid " << it.first << std::endl;
             return;
-        }        
+        }
         m_ui->drawObject(objtype,param,it.second.status);
     }
 }
@@ -180,10 +180,10 @@ void georis::Controller::addConstraint(ConstraintType type, const std::vector<UI
     UID uid = NOUID;
     RESCODE res = m_core.addConstraint(type,objects,param,&uid);
     if ( res != RC_OK ){
-        MOOLOG << "Controller::addConstraint unsuccesful" << std::endl;
+        MOOLOG << "Controller::addConstraint " << constrName(type) << " unsuccesful" << std::endl;
         return;
     }
-    MOOLOG << "Controller::addConstraint added with UID " << uid << std::endl;
+    MOOLOG << "Controller::addConstraint added " << constrName(type) << " with UID " << uid << std::endl;
 
     const size_t bufsize = 64;
     static char buf[bufsize];
@@ -310,7 +310,7 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
     showSelectionInfo();
 
     MOOLOG << "Controller::selectByPoint L size " << m_objs.size() << std::endl;
-    return 1;    
+    return 1;
 }
 
 void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
@@ -554,7 +554,7 @@ void georis::Controller::memHighlightsDown(){
     findObj(MODE_HIGHLIGHTED,highlighted);
     if ( !highlighted.empty() )
         m_memHighlights[0] = highlighted[0];
-    MOOLOG << "GeosController::memHighlightsDown " << m_memHighlights[0] << std::endl;
+    MOOLOG << "Controller::memHighlightsDown " << m_memHighlights[0] << std::endl;
 }
 void georis::Controller::memHighlightsUp(){
     m_memHighlights[1] = NOUID;
@@ -563,7 +563,7 @@ void georis::Controller::memHighlightsUp(){
     if ( !highlighted.empty() )
         m_memHighlights[1] = highlighted[0];
 
-    MOOLOG << "GeosController::memHighlightsUp " << m_memHighlights[1] << std::endl;
+    MOOLOG << "Controller::memHighlightsUp " << m_memHighlights[1] << std::endl;
 
 }
 void georis::Controller::saveTo(const std::string &fname){
@@ -699,7 +699,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                 }
             }
             while ( true );
-        }        
+        }
     }
 
     std::vector<UID> contrainedObjUIDs;
@@ -714,11 +714,31 @@ void georis::Controller::loadFrom(const std::string &fname){
         EInfo info = {MODE_NORMAL,name};
         m_constrs[uid] = info;
     }
-MOOLOG << "Controller::loadFrom: latest UID " << uid << std::endl;
+    MOOLOG << "Controller::loadFrom: latest UID " << uid << std::endl;
 
     UIDGen *gen = UIDGen::instance();
     gen->init(uid);
     //UIDGen::init( uid );
 
     updateView();
+}
+const char* georis::Controller::constrName(georis::ConstraintType ct){
+    static const char* names[] = {
+        "CT_FIX",
+        "CT_EQUAL",
+        "CT_VERTICAL",
+        "CT_HORIZONTAL",
+        "CT_DISTANCE",
+        "CT_ANGLE",
+        "CT_PARALLEL",
+        "CT_ORTHO",
+        "CT_TANGENT",
+        "CT_COINCIDENT",
+        "CT_MIDPOINT",
+        "CT_COLLINEAR",
+        "CT_DIMENSION",
+        "CT_SYMMETRIC",
+        "CT_CONCENTRIC"
+    };
+    return names[static_cast<size_t>(ct)];
 }

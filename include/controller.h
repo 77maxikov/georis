@@ -35,6 +35,7 @@ public:
     void saveTo(const std::string &fname);
     void loadFrom(const std::string &fname);
 
+    static const char* constrName(ConstraintType ct);
 protected:
 private:
     IVisualizer *m_ui;
