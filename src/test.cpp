@@ -29,8 +29,14 @@ int main(int argc,char *argv[]) {
 //#endif
 
     }
+    catch  (std::invalid_argument &e){
+        MOOLOG << e.what() << std::endl;
+    }
+    catch  (std::runtime_error &e){
+        MOOLOG << e.what() << std::endl;
+    }
     catch(...){
-
+        MOOLOG << "Unexpected error!" << std::endl;
     }
     return 0;
 }

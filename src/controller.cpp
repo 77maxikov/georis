@@ -8,6 +8,7 @@
 
 #include "controller.h"
 #include "iosvgx.h"
+#include "iordb.h"
 
 #include "mooLog.h"
 
@@ -571,8 +572,9 @@ void georis::Controller::saveTo(const std::string &fname){
     m_core.enumObjs(objuids);
     m_core.filterChildObj(objuids);
 
+    //SVGXWriter writer;
+    RDBWriter writer;
 
-    SVGXWriter writer;
     RESCODE res = writer.prepare(fname.c_str());
     if ( res != RC_OK ){
         MOOLOG << "Controller::saveTo: can't prepare file " << fname << std::endl;

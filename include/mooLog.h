@@ -2,7 +2,7 @@
 #define _MOOLOG_H
 
 //#define NOLOG
-#define CONSOLE_DEBUG
+//#define CONSOLE_DEBUG
 
 #ifdef NOLOG
 #include <iostream>

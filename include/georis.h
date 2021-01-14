@@ -18,7 +18,9 @@ enum ObjectType{
         OT_PLANE,
         OT_CIRCLE,
         OT_ARC,
-        OT_SPLINE
+        OT_SPLINE,
+        OT_LINDIM,
+        OT_CIRCDIM
         };
 
 enum ConstraintType{

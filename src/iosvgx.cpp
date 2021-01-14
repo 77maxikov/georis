@@ -224,6 +224,9 @@ RESCODE georis::SVGXReader::loadConstraint(UID &uid,std::string & name, Constrai
 
         elco = elco->NextSiblingElement();
     }
+    const char *szName = nullptr;
+    if ( nullptr == (szName = m_CurrentElem->Attribute("name")) ) return RC_RUNTIME_ERR;
+    name = szName;
     m_CurrentElem = m_CurrentElem->NextSiblingElement();
     return RC_OK;
 }

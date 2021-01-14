@@ -190,3 +190,65 @@ double georis::ConstrPP2LDist::grad(const double *var)const {
     */
     return 0;
 }
+
+
+
+
+georis::ConstrP2PLDist::ConstrP2PLDist(const georis::point2r &p1,const georis::point2r &p2, const georis::line2r &l) {
+    p1x = p1.x;
+    p1y = p1.y;
+    p2x = p2.x;
+    p2y = p2.y;
+    l1x = l.beg.x;
+    l1y = l.beg.y;
+    l2x = l.end.x;
+    l2y = l.end.y;
+}
+
+double georis::ConstrP2PLDist::error()const {
+    double ax = *l2x - *l1x;
+    double ay = *l2y - *l1y;
+    double d = std::sqrt(ax*ax+ay*ay);
+    if ( d < epsi ) throw std::runtime_error("ConstrP2PLDist::not a line!");
+
+    double p1lx = *p1x - *l1x;
+    double p1ly = *p1y - *l1y;
+    double p1p2x = *p2x - *p1x;
+    double p1p2y = *p2y - *p1y;
+
+
+    return (p1p2x*p1p2x + p1p2y*p1p2y)-(p1lx*ay-p1ly*ax)*(p1lx*ay-p1ly*ax)/d/d;
+}
+double georis::ConstrP2PLDist::grad(const double *var)const {
+
+    double ax = *l2x - *l1x;
+    double ay = *l2y - *l1y;
+    /*
+    double lpx1 = *p1x - *l1x;
+    double lpy1 = *p1y - *l1y;
+    double lpx2 = *p2x - *l1x;
+    double lpy2 = *p2y - *l1y;
+*/
+
+    double d = std::sqrt(ax*ax+ay*ay);
+    if ( d < epsi ) throw std::runtime_error("ConstrP2LDist::not a line!");
+
+    if (var == p1x)
+        return 1/(sqrt(*p2x**p2x-2.0**p2x**p1x+*p1x**p1x+*p2y**p2y-2.0**p2y**p1y+*p1y**p1y))*(-2.0**p2x+2.0**p1x)/2.0-2.0*((*p1x-*l1x)*(*l2y-*l1y)-(*p1y-*l1y)*(*l2x-*l1x))/(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y)*(*l2y-*l1y);
+    if (var == p1y)
+        return 1/(sqrt(*p2x**p2x-2.0**p2x**p1x+*p1x**p1x+*p2y**p2y-2.0**p2y**p1y+*p1y**p1y))*(-2.0**p2y+2.0**p1y)/2.0-2.0*((*p1x-*l1x)*(*l2y-*l1y)-(*p1y-*l1y)*(*l2x-*l1x))/(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y)*(-*l2x+*l1x);
+    if (var == p2x)
+        return (*p2x-*p1x)/sqrt(*p2x**p2x-2.0**p2x**p1x+*p1x**p1x+*p2y**p2y-2.0**p2y**p1y+*p1y**p1y);
+    if (var == p2y)
+        return (*p2y-*p1y)/sqrt(*p2x**p2x-2.0**p2x**p1x+*p1x**p1x+*p2y**p2y-2.0**p2y**p1y+*p1y**p1y);
+    if (var == l1x)
+        return 2.0*(*p1x**l2y-*p1x**l1y-*l1x**l2y-*p1y**l2x+*p1y**l1x+*l1y**l2x)*(*l2y-*l1y)*(*l2y**l2y-*p1y**l2y-*l2y**l1y+*p1y**l1y+*p1x**l1x+*l2x**l2x-*l2x**l1x-*p1x**l2x)/pow(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y,2.0);
+    if (var == l1y)
+        return -2.0*(*p1x**l2y-*p1x**l1y-*l1x**l2y-*p1y**l2x+*p1y**l1x+*l1y**l2x)*(*l2x-*l1x)*(*l2y**l2y-*p1y**l2y-*l2y**l1y+*p1y**l1y+*p1x**l1x+*l2x**l2x-*l2x**l1x-*p1x**l2x)/pow(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y,2.0);
+    if (var == l2x)
+        return -2.0*(*p1x**l2y-*p1x**l1y-*l1x**l2y-*p1y**l2x+*p1y**l1x+*l1y**l2x)*(*l2y-*l1y)*(*l2y**l1y-*p1y**l2y+*p1x**l1x+*p1y**l1y-*p1x**l2x-*l1x**l1x-*l1y**l1y+*l2x**l1x)/pow(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y,2.0);
+    if (var == l2y)
+        return 2.0*(*p1x**l2y-*p1x**l1y-*l1x**l2y-*p1y**l2x+*p1y**l1x+*l1y**l2x)*(*l2x-*l1x)*(*l2y**l1y-*p1y**l2y+*p1x**l1x+*p1y**l1y-*p1x**l2x-*l1x**l1x-*l1y**l1y+*l2x**l1x)/pow(*l2x**l2x-2.0**l2x**l1x+*l1x**l1x+*l2y**l2y-2.0**l2y**l1y+*l1y**l1y,2.0);
+
+    return 0;
+}

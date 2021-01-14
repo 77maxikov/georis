@@ -14,13 +14,14 @@ INCLUDEPATH += ../include \
 	../include/constraints \
 	../include/optim \
     ../include/fl \
-    ../externals/tinyxml2/include \
+    ../externals/tinyxml2 \
 	/usr/include/eigen3
 
-SOURCES += ../src/test.cpp \   
+SOURCES += ../src/test.cpp \
+    ../externals/tinyxml2/tinyxml2.cpp \
    ../src/GeFLTKVisualizer.cpp \
    ../src/GeGlWindow.cpp \
-   ../src/GeInfoWindow.cpp \   
+   ../src/GeInfoWindow.cpp \
    ../src/GeosFuncN.cpp \
    ../src/constraints/ConstrEqual.cpp \
    ../src/constraints/ConstrEqualAbs.cpp \
@@ -44,14 +45,15 @@ SOURCES += ../src/test.cpp \
    ../src/fl/Fl_InputWindow.cpp \
    ../src/fl/Fl_Toolbar.cpp \
    ../src/iosvgx.cpp \
+   ../src/iordb.cpp \
+    ../src/mooLog.cpp \
    ../src/objutils.cpp \
    ../src/optim/SolverLM.cpp \
    ../src/optim/SolverNG.cpp \
-   ../src/uid.cpp \
-   ../externals/tinyxml2/src/tinyxml2.cpp
-
+   ../src/uid.cpp
 
 HEADERS  += \
+    ../include/GeGlWindow.h \
     ../include/IFileIO.h \
     ../include/constraints/ConstrEqual.h \
     ../include/constraints/ConstrEqualAbs.h \
@@ -72,6 +74,7 @@ HEADERS  += \
     ../include/core.h \
     ../include/georis.h \
     ../include/errors.h \
+    ../include/iordb.h \
     ../include/mooLog.h \
     ../include/objects.h \
     ../include/objinfo.h \

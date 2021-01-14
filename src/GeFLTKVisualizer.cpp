@@ -178,6 +178,13 @@ void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<dou
         break;
     case georis::OT_ARC:
         _glWindow->drawArc(param[0],param[1],param[2],param[3],param[4],param[5],status);
+        break;
+    case georis::OT_LINDIM:
+        _glWindow->drawDimLine(param[0],param[1],param[2],param[3],param[4],param[5],status);
+        break;
+    case georis::OT_CIRCDIM:
+        _glWindow->drawDimLine(param[0],param[1],param[2],param[3],param[4],status);
+        break;
     default:
         ;
     }

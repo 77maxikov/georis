@@ -50,6 +50,10 @@ private:
         std::string name;
     };
 
+    struct DimInfo{
+
+    };
+
     std::map<ObjectType,int> m_lastObjNums;
 
     std::map<ConstraintType,int> m_lastConstrNums;

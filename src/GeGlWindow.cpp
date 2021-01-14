@@ -259,6 +259,29 @@ void GeGlWindow::drawLine(double x1, double y1, double x2, double y2,unsigned st
     glVertex2d(x2,y2);
     glEnd();
 }
+void GeGlWindow::drawDimLine(double x1, double y1,
+                             double x2, double y2,
+                             double x3, double y3,
+                             unsigned status ) {
+    setColor(status);
+    glBegin(GL_LINES);
+    glVertex2d(x1,y1);
+    glVertex2d(x2,y2);
+    glEnd();
+    glBegin(GL_LINES);
+    glVertex2d(x3,y3);
+    glVertex2d(x3 + x2 - x1,y3 + y2 - y1);
+    glEnd();
+}
+void GeGlWindow::drawDimLine(double xc, double yc, double r, double x2, double y2,unsigned status){
+    setColor(status);
+    glBegin(GL_LINES);
+    glVertex2d(xc,yc);
+    glVertex2d(x2,y2);
+    glVertex2d(x2 +40 ,y2);
+    glEnd();
+}
+
 void GeGlWindow::drawCircle(double px, double py, double r,unsigned status) {
     setColor(status);
     setStyle(status);

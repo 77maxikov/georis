@@ -36,5 +36,15 @@ public:
     double grad(const double *)const;
 };
 
+class ConstrP2PLDist:public IConstraint{
+    double *p1x,*p1y;
+    double *p2x,*p2y;
+    double *l1x,*l1y,*l2x,*l2y;
+public:
+    ConstrP2PLDist(const point2r&, const point2r&,const line2r&);
+    double error()const;
+    double grad(const double *)const;
+};
+
 }
 #endif // _CONSTRP2LDIST_H
