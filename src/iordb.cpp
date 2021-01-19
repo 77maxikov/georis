@@ -1,5 +1,6 @@
 #include "iordb.h"
 
+#include <set>
 #include <cassert>
 #include <sstream>
 #include "mooLog.h"
@@ -15,10 +16,9 @@ RESCODE georis::RDBWriter::prepare(const char *fname){
 
     m_fs << "USE sketching ;" << std::endl;
 
-    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`) VALUES (1,'Segment');" << std::endl;
-    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`) VALUES (5,'Circle');" << std::endl;
-    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`) VALUES (6,'Arc'); " << std::endl;
-
+    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`,`freedegree`) VALUES (1,'Segment',4);" << std::endl;
+    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`,`freedegree`) VALUES (5,'Circle',3);" << std::endl;
+    m_fs << "INSERT INTO  `objtype` (`idobjtype`,`name`,`freedegree`) VALUES (6,'Arc',5); " << std::endl;
 
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (0,'Fixed',0);" << std::endl;
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (1,'Equal',0);" << std::endl;
@@ -26,9 +26,10 @@ RESCODE georis::RDBWriter::prepare(const char *fname){
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (3,'Horizontal',0);" << std::endl;
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (4,'Distance',1);" << std::endl;
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (5,'Angle',1);" << std::endl;
-    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (4,'Parallel',0);" << std::endl;
-    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (5,'Ortho',0);" << std::endl;
-    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (7,'Tangent',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (6,'Parallel',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (7,'Ortho',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (8,'Tangent',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (9,'Coincident',0);" << std::endl;
     return RC_OK;
 }
 georis::RDBWriter::~RDBWriter(){
@@ -45,11 +46,13 @@ RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectTyp
 
 
 
-    if ( ++m_uNumObjs % 20 == 0 ){
+    if ( m_uNumObjs % 20 == 0 ){
         ++layernum;
+        m_fs << "INSERT INTO `layer` (`idlayer`) VALUES (" << layernum << ");" << std::endl;
     }
+    ++m_uNumObjs;
 
-    m_fs << "INSERT INTO `entity` (`identity`,`sketch`) VALUES (" << static_cast<unsigned>(uid) << ','<< layernum<< ");" << std::endl;
+    m_fs << "INSERT INTO `entity` (`identity`,`layer`) VALUES (" << static_cast<unsigned>(uid) << ','<< layernum<< ");" << std::endl;
 
     switch (ot){
     case OT_POINT:
@@ -67,7 +70,7 @@ RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectTyp
     }
     case OT_SEGMENT:
     {
-        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES " << static_cast<unsigned>(uid) << ",1);" << std::endl;
+        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES (" << static_cast<unsigned>(uid) << ",1);" << std::endl;
         while ( !m_sta.empty() && m_sta.top().first == static_cast<unsigned>(uid) ){
             m_fs << m_sta.top().second;
             m_sta.pop();
@@ -76,7 +79,7 @@ RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectTyp
     }
     case OT_CIRCLE:
     {
-        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES " << static_cast<unsigned>(uid) << ",5);" << std::endl;
+        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES (" << static_cast<unsigned>(uid) << ",5);" << std::endl;
         while ( !m_sta.empty() && m_sta.top().first == static_cast<unsigned>(uid) ){
             m_fs << m_sta.top().second;
             m_sta.pop();
@@ -84,7 +87,7 @@ RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectTyp
         break;
     }
     case OT_ARC:{
-        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES " << static_cast<unsigned>(uid) << ",6);" << std::endl;
+        m_fs << "INSERT INTO `object` (`idobject`, `objtype`)  VALUES (" << static_cast<unsigned>(uid) << ",6);" << std::endl;
         while ( !m_sta.empty() && m_sta.top().first == static_cast<unsigned>(uid) ){
             m_fs << m_sta.top().second;
             m_sta.pop();
@@ -109,7 +112,12 @@ RESCODE georis::RDBWriter::saveConstraint(UID uid, const std::string &name, Cons
     else{
         m_fs << "INSERT INTO `constraint` (`idconstraint`,`constrtype`) VALUES (" << static_cast<unsigned>(uid) << ','<< static_cast<unsigned>(ct) << ");" << std::endl;
     }
+    std::set<int> sorte;
+
     for (auto it: constrobj){
+        sorte.insert(it);
+    }
+    for (auto it: sorte){
         m_fs << "INSERT INTO `constrinfo` (`idconstraint`,`identity`) VALUES(" << static_cast<unsigned>(uid) << ',' << static_cast<unsigned>(it) << ");" << std::endl;
     }
     return RC_OK;

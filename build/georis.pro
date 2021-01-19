@@ -24,19 +24,13 @@ SOURCES += ../src/test.cpp \
    ../src/GeInfoWindow.cpp \
    ../src/GeosFuncN.cpp \
    ../src/constraints/ConstrEqual.cpp \
-   ../src/constraints/ConstrEqualAbs.cpp \
    ../src/constraints/ConstrL2L.cpp \
    ../src/constraints/ConstrL2LAngle.cpp \
    ../src/constraints/ConstrL2LEqual.cpp \
    ../src/constraints/ConstrL2LOrtho.cpp \
-   ../src/constraints/ConstrL2LOrtho2.cpp \
-   ../src/constraints/ConstrL2LOrthoAbs.cpp \
    ../src/constraints/ConstrL2LParal.cpp \
    ../src/constraints/ConstrP2LDist.cpp \
-   ../src/constraints/ConstrP2LDist2.cpp \
-   ../src/constraints/ConstrP2LDistAbs.cpp \
    ../src/constraints/ConstrP2PDist.cpp \
-   ../src/constraints/ConstrP2PDistAbs.cpp \
    ../src/constraints/Constraint.cpp \
    ../src/controller.cpp \
    ../src/core.cpp \
@@ -55,20 +49,15 @@ SOURCES += ../src/test.cpp \
 HEADERS  += \
     ../include/GeGlWindow.h \
     ../include/IFileIO.h \
+    ../include/constraints.h \
     ../include/constraints/ConstrEqual.h \
-    ../include/constraints/ConstrEqualAbs.h \
     ../include/constraints/ConstrL2L.h \
     ../include/constraints/ConstrL2LAngle.h \
     ../include/constraints/ConstrL2LEqual.h \
     ../include/constraints/ConstrL2LOrtho.h \
-    ../include/constraints/ConstrL2LOrtho2.h \
-    ../include/constraints/ConstrL2LOrthoAbs.h \
     ../include/constraints/ConstrL2LParal.h \
     ../include/constraints/ConstrP2LDist.h \
-    ../include/constraints/ConstrP2LDist2.h \
-    ../include/constraints/ConstrP2LDistAbs.h \
     ../include/constraints/ConstrP2PDist.h \
-    ../include/constraints/ConstrP2PDistAbs.h \
     ../include/constraints/IConstraint.h \
     ../include/controller.h \
     ../include/core.h \
