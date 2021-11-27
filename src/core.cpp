@@ -435,8 +435,16 @@ int georis::Core::restoreState(){
     return 0;
 }
 
+/*!
+Попытка добавить ограничение
+\param[in] type Тип ограничения
+\param[in] uids Объекты, для которых применяется ограничение
+\param[in] param Дополнительный параметр для ограничения
+\param[in|out] puid id ограничения
+\return результат попытки
+*/
 RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID> &uids,double param,UID *puid) {
-    if ( puid != nullptr && *puid != NOUID && findConstrGroupByConstrID(*puid) >= 0 ){
+    if ( (puid != nullptr && *puid != NOUID && findConstrGroupByConstrID(*puid) >= 0) || uids.empty() ){
         return RC_INVALIDARG;
     }
     std::map<ObjectType,std::vector<UID> > grouped;
@@ -470,7 +478,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 }
                 else
                     construid = UIDGen::instance()->generate();
-                constrInfo cinfo(type,{},std::vector<UID>(1,objuid) );// CT_FIX
+                constrInfo cinfo(type,{},{objuid} );// CT_FIX
 
                 //add all children of current obj
                 size_t c = 0;
@@ -565,7 +573,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
     }
     case CT_DISTANCE:
     case CT_DIMENSION:{
-        if ( param <= 0) return RC_INVALIDARG;
+        if ( param < 0) return RC_INVALIDARG;
 
         if (uids.size() == 2 && grouped[OT_POINT].size() == 2 ) { // Distance between 2 points
             ptrep* pt0 = dynamic_cast<ptrep*>( m_objects[ uids[0] ].obj );
