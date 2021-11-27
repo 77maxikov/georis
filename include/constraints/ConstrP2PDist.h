@@ -3,8 +3,9 @@
 #include "IConstraint.h"
 #include "objects.h"
 
-// Distance between 2 points
+
 namespace georis{
+// Distance between 2 points
 class ConstrP2PDist:public IConstraint{
     double *_p1x,*_p1y;
     double *_p2x,*_p2y;
@@ -14,6 +15,7 @@ public:
     ConstrP2PDist(const point2r&,const point2r&,double *dist);
     double error()const;
     double grad(const double *)const;
+    std::vector<double *> cparam()const { return {_p1x,_p1y,_p2x,_p2y,_dist}; };
 };
 }
 #endif // _CONSTRP2PDIST_H

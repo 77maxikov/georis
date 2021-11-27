@@ -25,6 +25,9 @@ int main(int argc,char *argv[]) {
         controller.setUI(&vis);
         vis.setController(&controller);
         vis.show();
+        if ( argc > 1 )
+            controller.loadFrom(argv[1]);
+
         Fl::run();
 //#endif
 

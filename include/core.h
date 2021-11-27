@@ -59,32 +59,54 @@ private:
 
     int backupState();
     int restoreState();
-    RESCODE tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double param,UID *puid);
-    void groupObj(const std::vector<UID> &uids, std::map<ObjectType,std::vector<objInfo*> > &grouped);
-	int solve();
 
+    void groupObjUIDsByType(const std::vector<UID> &uids, std::map<ObjectType,std::vector<UID> > &grouped)const;
+
+
+    RESCODE tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double param,UID *puid);
+    int solve();
+
+    int findConstrGroupByConstrID(UID)const;
+    int findConstrGroupByObjID(UID)const;
+    void mergeConstrGroups(int,int);
+    void updateConstrGroups2Obj(UID, UID);
+    void removeFixedParameters(std::vector<double*>& param );
 
 
     std::list<double> _params;
     std::vector<double> _paramsBU;
     std::set<double*> _const_params;
-    std::map<double*,double*> _linked_params; // ????
 
-    std::map<UID, objInfo> _objects;
+    std::map<UID, objInfo> m_objects;
 
-	struct ceFunc{
-		IConstraint* constr;// Constraint error func
-		std::vector<double*> cparam; // parameters linked with this constraint
-	};
 	struct constrInfo{
+        constrInfo(){}
+        constrInfo(ConstraintType ct,
+                   const std::vector<IConstraint*>& er,
+                   const std::vector<UID>& ob):type(ct),errors(er),objs(ob){};
 		ConstraintType type;
-		std::vector<ceFunc> constrs;
+        std::vector<IConstraint*> errors;
 		std::vector<UID> objs; // UIDs of constrained objects
 	};
-    std::map<UID, constrInfo> _constraints;
-    std::map<UID, constrInfo> _constraintsBU;
+    struct constrGroup{
+        std::map<UID, constrInfo> constraints;
+        bool unsolved;
+
+        constrGroup():unsolved(true){}
+        std::vector<double*> getAllParams()const;
+        std::vector<double*> getTunableParams()const;
+        bool isLinkingConstr(UID) const;
+        bool areParallel(const std::vector<UID> &segemnts);
+    };
+
+    std::vector<constrGroup> m_constrGroups;
+    std::vector<constrGroup> m_constrGroupsBU;
+
 
     std::map<UID,int> m_Sketches;
+
+    void constrainEntities(const std::vector<UID>& objuids, constrInfo& cinfo, UID* puid);
+
 };
 }
 #endif // GEOSCORE_H

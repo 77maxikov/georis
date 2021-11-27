@@ -15,6 +15,7 @@ double georis::ConstrP2PDist::d2()const{
 double georis::ConstrP2PDist::error()const{
 	return std::sqrt(d2()) - *_dist;
 }
+
 double georis::ConstrP2PDist::grad(const double*var)const{
 	double d =  std::sqrt(d2());
 	if (d < epsi) throw std::runtime_error("ConstrP2PDist::points too close");

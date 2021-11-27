@@ -23,21 +23,21 @@ double georis::ConstrL2LOrtho::grad(const double *var)const{
 	if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LOrtho::grad - not a line 2!");
 
 	if (var == l11x)
-        return (*l21x - *l22x);
+        return -a2x;
     if (var == l11y)
-        return (*l21y - *l22y);
+        return -a2y;
     if (var == l12x)
-        return (*l22x - *l21x);
+        return a2x;
     if (var == l12y)
-        return (*l22y - *l21y);
+        return a2y;
     if (var == l21x)
-        return (*l11x - *l12x);
+        return -a1x;
     if (var == l21y)
-        return (*l11y - *l12y);
+        return -a2y;
     if (var == l22x)
-        return (*l12x - *l11x);
+        return a1x;
     if (var == l22y)
-        return (*l12y - *l11y);
+        return a1y;
     return 0;
 }
 

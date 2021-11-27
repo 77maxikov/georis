@@ -1,8 +1,9 @@
 #include "SolverLM.h"
 #include <stdexcept>
+#include "scaler.h"
 
 //#include <Eigen/Eigenvalues>
-#include <iostream>
+#include "mooLog.h"
 
 SolverLM::SolverLM() {
     _fevals = 0;
@@ -22,16 +23,32 @@ void SolverLM::solve(const SolveTask &task) {
     if (!(*task.target).hasJacob()) throw std::invalid_argument("SolverLM::target function should provide Jacobian");
     v_type x1(task.x0);
     _bestx = x1;
-    v_type fx1 = (*task.target)(x1);
-    ++_fevals;
+    v_type fx1 = (*task.target)(x1);++_fevals;
+    v_type scaler = fx1.cwiseAbs();
+    for (Eigen::Index k = 0;k < scaler.size();++k)
+        if ( scaler(k) < 1e-0 )
+            scaler(k) = 1;
+        else
+            scaler(k) = 1/scaler(k);
+
+    IOptFuncN* target = task.target;
+
+    ScaledOptFuncN scaledtarget(task.target, scaler);
+    if (0){
+        target = &scaledtarget;
+        fx1 = fx1.array().colwise()*scaler.array();
+    }
+    MOOLOG << "SolverLM::solve - initial values: " << std::endl << fx1 << std::endl;
     unsigned flag = 0;
     v_type dx(x1.size());
-
+    size_t iter = 0;
     while (1) {
 //std::cout << "SolverLM::solve - x = "<< std::endl << x1 << std::endl;
-//std::cout << "SolverLM::solve - fx1  = " << fx1 <<", norm = "<< fx1.norm()<<std::endl;
+        MOOLOG << "SolverLM::solve - fx1  = " << std::endl << fx1 <<", norm = "<< fx1.norm() << std::endl;
 
-        m_type jacob = task.target->getJacob(x1);
+        m_type jacob = target->getJacob(x1);
+        //MOOLOG << "SolverLM::solve - J:" << std::endl << jacob << std::endl;
+
         /*std::cout << "=============" << std::endl;
         std::cout << "Jacob:" << std::endl << jacob << std::endl;
         std::cout << "=============" << std::endl;
@@ -40,8 +57,10 @@ void SolverLM::solve(const SolveTask &task) {
 */
         m_type nf = -jacob.transpose()*fx1;
         m_type HH = jacob.transpose()*jacob;
+        //MOOLOG << "SolverLM::solve - HH: " << std::endl << HH << std::endl;
         double detHH = HH.determinant();
-//        std::cout << "Det of HH is:" << std::endl << HH.determinant() << std::endl;
+        MOOLOG << "SolverLM::solve - det(HH): " << HH.determinant() << std::endl;
+
         do {
             m_type H = HH;
             if ( std::abs(detHH) < 1e-8 )
@@ -53,23 +72,23 @@ void SolverLM::solve(const SolveTask &task) {
 //            std::cout << "Damped H = " << std::endl <<H << std::endl;
 //	        Eigen::EigenSolver<m_type> sol(H);
 //std::cout << "The eigenvalues of H are:" << std::endl << sol.eigenvalues() << std::endl;
-            std::cout << "Det of H is:" << std::endl << H.determinant() << std::endl;
+            MOOLOG << "SolverLM::solve - iter: " << iter <<" det(H):" << H.determinant() << std::endl;
 
             dx = H.fullPivLu().solve(nf);
 
             double rel_error = (H*dx - nf).norm() / nf.norm();
-            std::cout << "rel_error = " << rel_error << std::endl;
-            //std::cin.get();
+            MOOLOG << "SolverLM::solve - iter: " << iter <<" rel_error: " << rel_error << " dx.norm: " << dx.norm() << std::endl;
+
             if ( dx.norm() < task.stopcond.tolx ){
-					std::cout << "dx.norm() < epsi" <<std::endl;
+                    MOOLOG << "SolverLM::solve - dx.norm() < epsi" <<std::endl;
 					break;
             }
 
             v_type x2(x1 + dx);
-            v_type fx2 = (*task.target)(x2);
+            v_type fx2 = (*target)(x2);
             ++_fevals;
             if ( (fx1-fx2).norm() < task.stopcond.tolf ) {
-					std::cout << "df.norm() < epsi" <<std::endl;
+                    MOOLOG << "SolverLM::solve - df.norm() < epsi" <<std::endl;
 					flag |= OPTFLAG_TOLF;
 					break;
             }
@@ -82,8 +101,7 @@ void SolverLM::solve(const SolveTask &task) {
                 break;
             } else
                 _mu = std::min(_mu*_mu_inc,1e8);
-
-//std::cout << "_mu = " << _mu << std::endl;
+MOOLOG << "_mu = " << _mu << std::endl;
         } while (1e-8< _mu && _mu < 1e8);
 
         if (_fevals > task.stopcond.fevals) {
@@ -91,7 +109,7 @@ void SolverLM::solve(const SolveTask &task) {
             break;
         }
         if ( fx1.norm() < task.stopcond.tolf) {
-				std::cout << "AHTUNG !!!  " << std::endl;
+                //MOOLOG << "SolverLM::solve - AHTUNG !!!  " << std::endl;
             flag |= OPTFLAG_TOLF;
             break;
         }
@@ -101,8 +119,10 @@ void SolverLM::solve(const SolveTask &task) {
         }
         if ( flag & OPTFLAG_TOLF )
 				break;
+
+        ++iter;
     }
-    std::cout << "SolverLM::solve - finished with flag = " << flag << " fevals " << _fevals << std::endl;
-    (*task.target)(_bestx);
+    MOOLOG << "SolverLM::solve - finished with flag = " << flag << " fevals " << _fevals << std::endl;
+    //(*task.target)(_bestx);
 }
 

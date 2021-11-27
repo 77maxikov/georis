@@ -466,6 +466,8 @@ void georis::Controller::showSelectionInfo() {
             ++nselArcs;
             break;
         case OT_SPLINE:
+        case OT_LINDIM:
+        case OT_CIRCDIM:
         case OT_NONE:
             ;
 
@@ -572,8 +574,8 @@ void georis::Controller::saveTo(const std::string &fname){
     m_core.enumObjs(objuids);
     m_core.filterChildObj(objuids);
 
-    //SVGXWriter writer;
-    RDBWriter writer;
+    SVGXWriter writer;
+    //RDBWriter writer;
 
     RESCODE res = writer.prepare(fname.c_str());
     if ( res != RC_OK ){

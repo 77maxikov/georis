@@ -15,7 +15,6 @@ enum ObjectType{
         OT_NONE=0,
         OT_POINT,
         OT_SEGMENT,
-        OT_PLANE,
         OT_CIRCLE,
         OT_ARC,
         OT_SPLINE,

@@ -93,7 +93,7 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                 _coo[1] = _coo[3] = yCur;
                 if (_controller) {
                     double precision = 5*minPixelRes();
-                    MOOLOG << "GeGlWindow:processMouse precision = " << precision << std::endl;
+                    //MOOLOG << "GeGlWindow:processMouse precision = " << precision << std::endl;
                     if ( _controller->selectByPoint(xCur,yCur,precision) == 0 )
                         _state = 1;
                 }

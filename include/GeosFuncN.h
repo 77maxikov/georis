@@ -14,7 +14,7 @@ public:
     void add(IConstraint *c){if ( !c ) throw std::invalid_argument("GeosFuncN::add - not a constraint!");_constraints.push_back(c);};
     size_t inDim()const{return _storage->size();};
     size_t outDim()const{return  _constraints.size();}
-    bool hasJacob(){return true;}
+    bool hasJacob()const {return true;}
 	 v_type operator()(const v_type &);
 	 m_type getJacob(const v_type &);
 };

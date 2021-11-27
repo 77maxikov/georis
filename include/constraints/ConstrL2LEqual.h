@@ -11,6 +11,7 @@ public:
     ConstrL2LEqual(const point2r&pb1, const point2r&pe1,const point2r&pb2, const point2r&pe2):ConstrL2L(line2r(pb1,pe1),line2r(pb2,pe2)){}
 	double error()const;
 	double grad(const double *v)const;
+    std::vector<double*> cparam()const{return {l11x,l11y,l12x,l12y,l21x,l21y,l22x,l22y};}
 
 };
 }

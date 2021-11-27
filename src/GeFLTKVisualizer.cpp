@@ -78,7 +78,7 @@ int georis::GeFLTKVisualizer::handle(int event) {
 }
 
 void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
-    MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
+    //MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
 	_glWindow->setMode(mode);
 
 	if (mode != IM_NONE){
@@ -101,7 +101,7 @@ void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
 
 }
 int georis::GeFLTKVisualizer::processKeyboard(int key) {
-MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
+//MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
     switch (key) {
     case FL_Escape: // ESC
             _controller->resetHighlight();

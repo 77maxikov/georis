@@ -28,6 +28,7 @@ SOURCES += ../src/test.cpp \
    ../src/constraints/ConstrL2LAngle.cpp \
    ../src/constraints/ConstrL2LEqual.cpp \
    ../src/constraints/ConstrL2LOrtho.cpp \
+    ../src/constraints/ConstrL2LOrtho2.cpp \
    ../src/constraints/ConstrL2LParal.cpp \
    ../src/constraints/ConstrP2LDist.cpp \
    ../src/constraints/ConstrP2PDist.cpp \

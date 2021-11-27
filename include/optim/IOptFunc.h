@@ -28,7 +28,7 @@ class IOptFuncN : public IOptFunc{
 public:
 	virtual size_t outDim()const = 0;
 	virtual v_type operator()(const v_type &) = 0;
-	virtual bool hasJacob() = 0;
+        virtual bool hasJacob()const = 0;
 	virtual m_type getJacob(const v_type &) = 0;
 };
 #endif
