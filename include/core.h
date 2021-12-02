@@ -84,8 +84,8 @@ private:
         constrInfo(ConstraintType ct,
                    const std::vector<IConstraint*>& er,
                    const std::vector<UID>& ob):type(ct),errors(er),objs(ob){};
-		ConstraintType type;
-        std::vector<IConstraint*> errors;
+        ConstraintType type;
+        std::vector<IConstraint*> errors; // Error functions for constraint
 		std::vector<UID> objs; // UIDs of constrained objects
 	};
     struct constrGroup{
@@ -95,8 +95,11 @@ private:
         constrGroup():unsolved(true){}
         std::vector<double*> getAllParams()const;
         std::vector<double*> getTunableParams()const;
+
         bool isLinkingConstr(UID) const;
-        bool areParallel(const std::vector<UID> &segemnts);
+
+
+        bool verifyTransitive(ConstraintType ct, const std::vector<UID> &elements);
     };
 
     std::vector<constrGroup> m_constrGroups;

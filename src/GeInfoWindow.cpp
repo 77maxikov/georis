@@ -110,7 +110,7 @@ void GeInfoWindow::cbConstrOrtho(Fl_Widget*w, void*d) {
     if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->redraw();
 }
 void GeInfoWindow::cbConstrCoincident(Fl_Widget*w, void*d) {
-    if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_DISTANCE,0);
+    if (((GeInfoWindow*)(w->parent()->parent()))->_controller) ((GeInfoWindow*)(w->parent()->parent()))->_controller->constrainSelected(georis::CT_COINCIDENT);
     if ((GeInfoWindow*)(w->parent()->parent())) ((GeInfoWindow*)(w->parent()->parent()))->parent()->redraw();
 }
 void GeInfoWindow::cbConstrCollinear(Fl_Widget*w, void*d) {

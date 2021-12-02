@@ -32,6 +32,7 @@ SOURCES += ../src/test.cpp \
    ../src/constraints/ConstrL2LParal.cpp \
    ../src/constraints/ConstrP2LDist.cpp \
    ../src/constraints/ConstrP2PDist.cpp \
+    ../src/constraints/ConstrPP2LSym.cpp \
    ../src/constraints/Constraint.cpp \
    ../src/controller.cpp \
    ../src/core.cpp \

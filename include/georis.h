@@ -24,19 +24,19 @@ enum ObjectType{
 
 enum ConstraintType{
 	CT_FIX = 0,
-	CT_EQUAL,
-	CT_VERTICAL,
-	CT_HORIZONTAL,
-	CT_DISTANCE,
-	CT_ANGLE,
-	CT_PARALLEL,
-	CT_ORTHO,
-	CT_TANGENT,
-	CT_COINCIDENT,
-    CT_MIDPOINT,
-	CT_COLLINEAR,
-	CT_DIMENSION,
-	CT_SYMMETRIC,
-	CT_CONCENTRIC
+    CT_EQUAL,      //1
+    CT_VERTICAL,   //2
+    CT_HORIZONTAL, //3
+    CT_DISTANCE,   //4
+    CT_ANGLE,      //5
+    CT_PARALLEL,   //6
+    CT_ORTHO,      //7
+    CT_TANGENT,    //8
+    CT_COINCIDENT, //9
+    CT_MIDPOINT,   //10
+    CT_COLLINEAR,  //11
+    CT_DIMENSION,  //12
+    CT_SYMMETRIC,  //13
+    CT_CONCENTRIC  //14
 	};
 }

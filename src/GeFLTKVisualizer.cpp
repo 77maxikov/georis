@@ -155,7 +155,7 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
         break;
     case 'x':
         //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_DISTANCE,0);
+            if (_controller) _controller->constrainSelected(georis::CT_COINCIDENT);
         break;
     case 't':
         //if ( _input_mode == IM_NONE )

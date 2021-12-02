@@ -30,9 +30,7 @@ MOOLOG  << "Jacob:" << std::endl << jacob << std::endl;
         //if (0){
             v_type dx1 = jacob.colPivHouseholderQr().solve(-fx1);
 
-
-
-            m_type H = jacob*jacob.transpose();
+            m_type H = jacob*jacob.transpose();            
             m_type sol = H.colPivHouseholderQr().solve(-fx1);
             v_type dx2 = jacob.transpose()*sol;
 
@@ -54,7 +52,7 @@ MOOLOG  << "Jacob:" << std::endl << jacob << std::endl;
 
             dx = H.fullPivLu().solve(nf);
         }
-        MOOLOG << "dx = "<< std::endl << dx << std::endl;
+        //MOOLOG << "dx = "<< std::endl << dx << std::endl;
         //MOOLOG << "J*dx " << std::endl << (jacob*dx) << std::endl;
         MOOLOG << "f(x)+J*dx "<<std::endl << (fx1 + jacob * dx) << std::endl;
         MOOLOG << "fx1.transpose()*jacob*dx" << std::endl << fx1.transpose()*jacob*dx << std::endl;

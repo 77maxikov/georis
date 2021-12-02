@@ -389,7 +389,7 @@ RESCODE georis::Core::getObjChilds(UID uid,std::vector<UID>&uids)const {
     return RC_OK;
 }
 RESCODE georis::Core::getObjParent(UID uid,UID &par)const{
-    for ( auto obj : m_objects)
+    for ( auto &obj : m_objects)
         if ( obj.second.hasChild(uid) ) { par = obj.first; return RC_OK;}
     par = NOUID;
     return RC_NO_OBJ;
@@ -560,186 +560,6 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         }
         break;
     }
-    case CT_COINCIDENT:{
-        if (uids.size() == 2 && grouped[OT_POINT].size() == 2 ) { // Distance between 2 points
-            ptrep* pt0 = dynamic_cast<ptrep*>( m_objects[ uids[0] ].obj );
-            ptrep* pt1 = dynamic_cast<ptrep*>( m_objects[ uids[1] ].obj );
-            constrInfo cinfo(type, {new ConstrEqual(pt0->x,pt1->x),new ConstrEqual(pt0->y,pt1->y)},uids );//CT_COINCIDENT;
-
-            constrainEntities({uids[0], uids[1]}, cinfo, puid);
-            MOOLOG << "Core::tryAddConstraint - added coincident for "<< *pt0 << " and " << *pt1 << std::endl;
-            added = true;
-        }
-    }
-    case CT_DISTANCE:
-    case CT_DIMENSION:{
-        if ( param < 0) return RC_INVALIDARG;
-
-        if (uids.size() == 2 && grouped[OT_POINT].size() == 2 ) { // Distance between 2 points
-            ptrep* pt0 = dynamic_cast<ptrep*>( m_objects[ uids[0] ].obj );
-            ptrep* pt1 = dynamic_cast<ptrep*>( m_objects[ uids[1] ].obj );
-            _params.push_back(param);
-            constrInfo cinfo(type,{new ConstrP2PDist(*pt0,*pt1,&_params.back())},uids);
-            constrainEntities({uids[0], uids[1]}, cinfo, puid);
-            MOOLOG << "Core::tryAddConstraint - added distance " << param << " between points " << *pt0 << " and " << *pt1 << std::endl;
-            added = true;
-        } else if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
-            ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
-            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
-            _params.push_back(param);
-            constrInfo cinfo(type,{ new ConstrP2LDist(*pt,*line,&_params.back())},uids);
-            constrainEntities({uids[0], uids[1]}, cinfo, puid);
-            MOOLOG << "Core::tryAddConstraint - added distance "<<param << " between point " << *pt << " and line " << *line << std::endl;
-            added = true;
-        }
-        else if ( uids.size() == 2 && grouped[OT_SEGMENT].size() ==2) { // Distance between 2 parallel segments
-            int ng = findConstrGroupByObjID(uids[0]);
-            // verify we have parallel segments
-            if ( ng < 0 ){
-                MOOLOG << "Core::tryAddConstraint: unhandled segment(s) dimension|distance constraint " << std::endl;
-                added = false;
-                break;
-            }
-            else{
-                if ( m_constrGroups[ng].areParallel(uids) ){
-                    _params.push_back(param);
-                    lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
-                    lirep* line2 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
-                    constrInfo cinfo(type,{ new ConstrP2LDist( *(line1->beg), *line2,&_params.back())},uids);
-                    constrainEntities({uids[0], uids[1]}, cinfo, puid);
-                    MOOLOG << "Core::tryAddConstraint - added distance "<<param << " between line " << *line1 << " and line " << *line2 <<  std::endl;
-                    added = true;
-                }
-
-            }
-        }
-        else if ( uids.size() == grouped[OT_CIRCLE].size()) {
-            for (size_t k = 0; k < grouped[OT_CIRCLE].size(); ++k) {
-                circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][k]].obj);
-                _const_params.insert(ci->r);
-                *(ci->r) = param;
-                MOOLOG << "Core::tryAddConstraint - added radius" <<param << " for circle (" <<  *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
-            }
-            /*
-            UID uid = NOUID;
-            if ( puid != nullptr && *puid != NOUID )
-                uid = *puid;
-            else
-                *puid = uid = UIDGen::instance()->generate();
-
-            _constraints[uid] = cinfo;
-
-            cinfo.objs = uids;
-            _objects[uids[0]].constrs.push_back(uid);
-            */
-            added = true;
-        }
-        break;
-    }
-
-
-
-    case CT_MIDPOINT:{
-        if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
-            _params.push_back(param);
-            ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
-            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
-            constrInfo cinfo(type,{new ConstrPOnL(*pt,*line),new ConstrMidVal(pt->x,line->beg->x,line->end->x),new ConstrMidVal(pt->y,line->beg->y,line->end->y)},uids);
-            constrainEntities({uids[0], uids[1]}, cinfo, puid);
-            MOOLOG << "Core::tryAddConstraint - added midpoint for point " << *pt << " and line " << *line << std::endl;
-            added = true;
-        }
-        break;
-    }
-    case CT_ORTHO:{
-        if ( uids.size() == 2 && grouped[OT_SEGMENT].size() == 2 ) {
-            lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
-            lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
-            constrInfo cinfo(type, {new ConstrL2LOrtho2(*line0,*line1)},uids);//CT_ORTHO;
-            constrainEntities({uids[0],uids[1]},cinfo,puid);
-            MOOLOG << "Core::tryAddConstraint - added ortho between line " << *line0 << " and line " << *line1 << std::endl;
-            added = true;
-        }
-        break;
-    }
-    case CT_PARALLEL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size()  && grouped[OT_SEGMENT].size() > 1 ) {
-            for (size_t k= 0; k < grouped[OT_SEGMENT].size()-1; ++k) {
-                lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
-                lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
-                constrInfo cinfo(type,{new ConstrL2LParal(*line0,*line1)},{uids[k],uids[k+1]} );//CT_PARALLEL;
-                constrainEntities({uids[k],uids[k+1]},cinfo,puid);
-                MOOLOG << "Core::tryAddConstraint - added parallel between line " << *line0 << " and line " << *line1 << std::endl;
-            }
-            added = true;
-        }
-        break;
-    }
-    case CT_VERTICAL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
-            for (size_t k= 0; k < uids.size(); ++k) {
-                lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
-                constrInfo cinfo(type,{new ConstrEqual(li->beg->x,li->end->x)},{uids[k]});//CT_VERTICAL;
-                constrainEntities({uids[k]},cinfo,puid);
-                MOOLOG << "Core::tryAddConstraint - added " << ((type == CT_VERTICAL)?"vertical":"horizontal")<< " for line " << *li << std::endl;
-            }
-            added = true;
-        }
-        break;
-    }
-    case CT_HORIZONTAL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
-            for (size_t k= 0; k < uids.size(); ++k) {
-                lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
-                constrInfo cinfo(type,{new ConstrEqual(li->beg->y,li->end->y)},{uids[k]});//CT_VERTICAL;
-                constrainEntities({uids[k]},cinfo,puid);
-                MOOLOG << "Core::tryAddConstraint - added " << ((type == CT_VERTICAL)?"vertical":"horizontal")<< " for line " << *li << std::endl;
-            }
-            added = true;
-        }
-        break;
-    }
-    case CT_COLLINEAR:{
-        if ( uids.size() >1  && uids.size() == grouped[OT_SEGMENT].size()  ) {
-            for (size_t k= 0; k < uids.size()-1; ++k) {
-                lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
-                lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
-                constrInfo cinfo(type,{new ConstrL2LParal(*line0,*line1),new ConstrPOnL(*(line0->beg),*line1)},{uids[k],uids[k+1]});//CT_COLLINEAR;
-                constrainEntities({uids[k],uids[k+1]},cinfo,puid);
-                MOOLOG << "Core::tryAddConstraint - added collinear between line " << *line0 << " and line " << *line1 << std::endl;
-            }
-            added = true;
-        }
-        break;
-    }
-    case CT_TANGENT:{
-        if ( !grouped[OT_SEGMENT].empty() ) {
-            if ( grouped[OT_CIRCLE].size() == 1 ){
-                circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][0]].obj);
-                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
-                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
-
-                    constrInfo cinfo(type, {new ConstrP2LDist(*(ci->center),*(li),ci->r,true)} ,{grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]});
-                    constrainEntities({grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]},cinfo,puid);
-                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
-                    added = true;
-                }
-            }
-            if ( grouped[OT_ARC].size() == 1 ){
-                arcrep* arc = dynamic_cast<arcrep*>(m_objects[grouped[OT_ARC][0]].obj);
-                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
-                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
-                    constrInfo cinfo(type,{new ConstrP2PLDist(*(arc->center),*(arc->beg),*(li))},{grouped[OT_ARC][0],grouped[OT_SEGMENT][k]});//CT_TANGENT;
-                    constrainEntities({grouped[OT_ARC][0],grouped[OT_SEGMENT][k]},cinfo,puid);
-
-                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and arc ("<< *(arc->center) <<","<< *(arc->beg)<<","<< *(arc->end) << ")"<< std::endl;
-                    added = true;
-                }
-
-            }
-        }
-        break;
-    }
     case CT_EQUAL:{
         if ( uids.size() > 1 ){
             if ( uids.size() == grouped[OT_CIRCLE].size() ) {
@@ -779,7 +599,213 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
 
                 }
                 added = true;
-            }            
+            }
+        }
+        break;
+    }
+    case CT_VERTICAL:{
+        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
+            for (size_t k= 0; k < uids.size(); ++k) {
+                lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
+                constrInfo cinfo(type,{new ConstrEqual(li->beg->x,li->end->x)},{uids[k]});//CT_VERTICAL;
+                constrainEntities({uids[k]},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added vertical for line " << *li << std::endl;
+            }
+            added = true;
+        }
+        break;
+    }
+    case CT_HORIZONTAL:{
+        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
+            for (size_t k= 0; k < uids.size(); ++k) {
+                lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
+                constrInfo cinfo(type,{new ConstrEqual(li->beg->y,li->end->y)},{uids[k]});//CT_HORIZONTAL;
+                constrainEntities({uids[k]},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added horizontal for line " << *li << std::endl;
+            }
+            added = true;
+        }
+        break;
+    }
+    case CT_DISTANCE:
+    case CT_DIMENSION:{
+        if ( param <= 0) return RC_INVALIDARG;
+
+        if (uids.size() == 2 && grouped[OT_POINT].size() == 2 ) { // Distance between 2 points
+            ptrep* pt0 = dynamic_cast<ptrep*>( m_objects[ uids[0] ].obj );
+            ptrep* pt1 = dynamic_cast<ptrep*>( m_objects[ uids[1] ].obj );
+            _params.push_back(param);
+            constrInfo cinfo(type,{new ConstrP2PDist(*pt0,*pt1,&_params.back())},uids);
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added distance " << param << " between points " << *pt0 << " and " << *pt1 << std::endl;
+            added = true;
+        } else if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
+            ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
+            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            _params.push_back(param);
+            constrInfo cinfo(type,{ new ConstrP2LDist(*pt,*line,&_params.back())},uids);
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added distance "<<param << " between point " << *pt << " and line " << *line << std::endl;
+            added = true;
+        }
+        else if ( uids.size() == 2 && grouped[OT_SEGMENT].size() ==2) { // Distance between 2 parallel segments
+            int ng = findConstrGroupByObjID(uids[0]);
+            // verify we have parallel segments
+            if ( ng < 0 ){
+                MOOLOG << "Core::tryAddConstraint: unhandled segment(s) dimension|distance constraint " << std::endl;
+                added = false;
+                break;
+            }
+            else{
+                if ( m_constrGroups[ng].verifyTransitive(CT_PARALLEL,uids) ){
+                    _params.push_back(param);
+                    lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
+                    lirep* line2 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
+                    constrInfo cinfo(type,{ new ConstrP2LDist( *(line1->beg), *line2,&_params.back())},uids);
+                    constrainEntities({uids[0], uids[1]}, cinfo, puid);
+                    MOOLOG << "Core::tryAddConstraint - added distance "<<param << " between line " << *line1 << " and line " << *line2 <<  std::endl;
+                    added = true;
+                }
+
+            }
+        }
+        else if ( uids.size() == grouped[OT_CIRCLE].size()) {
+            for (size_t k = 0; k < grouped[OT_CIRCLE].size(); ++k) {
+                circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][k]].obj);
+                _const_params.insert(ci->r);
+                *(ci->r) = param;
+                MOOLOG << "Core::tryAddConstraint - added radius" <<param << " for circle (" <<  *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
+            }
+            /*
+            UID uid = NOUID;
+            if ( puid != nullptr && *puid != NOUID )
+                uid = *puid;
+            else
+                *puid = uid = UIDGen::instance()->generate();
+
+            _constraints[uid] = cinfo;
+
+            cinfo.objs = uids;
+            _objects[uids[0]].constrs.push_back(uid);
+            */
+            added = true;
+        }
+        break;
+    }
+    case CT_ANGLE:{
+        if ( uids.size() == 2 && uids.size() == grouped[OT_SEGMENT].size() ) {
+            _params.push_back(param);
+            lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
+            lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
+            constrInfo cinfo(type,{new ConstrL2LAngle(*line0,*line1,&_params.back())},{uids[0],uids[1]} );//CT_ANGLE;
+            constrainEntities({uids[0],uids[1]},cinfo,puid);
+            MOOLOG << "Core::tryAddConstraint - added angle " << param << " between line " << *line0 << " and line " << *line1 << std::endl;
+            added = true;
+        }
+        break;
+    }
+    case CT_PARALLEL:{
+        if ( uids.size() == grouped[OT_SEGMENT].size()  && grouped[OT_SEGMENT].size() > 1 ) {
+            for (size_t k= 0; k < grouped[OT_SEGMENT].size()-1; ++k) {
+                lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
+                lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
+                constrInfo cinfo(type,{new ConstrL2LParal(*line0,*line1)},{uids[k],uids[k+1]} );//CT_PARALLEL;
+                constrainEntities({uids[k],uids[k+1]},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added parallel between line " << *line0 << " and line " << *line1 << std::endl;
+            }
+            added = true;
+        }
+        break;
+    }
+    case CT_ORTHO:{
+        if ( uids.size() == 2 && grouped[OT_SEGMENT].size() == 2 ) {
+            lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
+            lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
+            constrInfo cinfo(type, {new ConstrL2LOrtho2(*line0,*line1)},uids);//CT_ORTHO;
+            constrainEntities({uids[0],uids[1]},cinfo,puid);
+            MOOLOG << "Core::tryAddConstraint - added ortho between line " << *line0 << " and line " << *line1 << std::endl;
+            added = true;
+        }
+        break;
+    }
+    case CT_TANGENT:{
+        if ( !grouped[OT_SEGMENT].empty() ) {
+            if ( grouped[OT_CIRCLE].size() == 1 ){
+                circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][0]].obj);
+                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
+                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
+                    constrInfo cinfo(type, {new ConstrP2LDist(*(ci->center),*(li),ci->r,true)} ,{grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]});
+                    constrainEntities({grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]},cinfo,puid);
+                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r) << ")"<< std::endl;
+                    added = true;
+                }
+            }
+            if ( grouped[OT_ARC].size() == 1 ){
+                arcrep* arc = dynamic_cast<arcrep*>(m_objects[grouped[OT_ARC][0]].obj);
+                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
+                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
+                    constrInfo cinfo(type,{new ConstrP2PLDist(*(arc->center),*(arc->beg),*(li))},{grouped[OT_ARC][0],grouped[OT_SEGMENT][k]});//CT_TANGENT;
+                    constrainEntities({grouped[OT_ARC][0],grouped[OT_SEGMENT][k]},cinfo,puid);
+                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and arc ("<< *(arc->center) <<","<< *(arc->beg)<<","<< *(arc->end) << ")"<< std::endl;
+                    added = true;
+                }
+
+            }
+        }
+        break;
+    }
+    case CT_COINCIDENT:{
+        if (uids.size() == 2 && grouped[OT_POINT].size() == 2 ) { // 2 points coicide
+            ptrep* pt0 = dynamic_cast<ptrep*>( m_objects[ uids[0] ].obj );
+            ptrep* pt1 = dynamic_cast<ptrep*>( m_objects[ uids[1] ].obj );
+            constrInfo cinfo(type, {new ConstrEqual(pt0->x,pt1->x),new ConstrEqual(pt0->y,pt1->y)},uids );//CT_COINCIDENT;
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added coincident for "<< *pt0 << " and " << *pt1 << std::endl;
+            added = true;
+        }
+        else if ( uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1){
+            ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
+            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            constrInfo cinfo(type,{ new ConstrPOnL(*pt,*line)},uids);
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added coincident between point " << *pt << " and line " << *line << std::endl;
+            added = true;
+        }
+    }
+    case CT_MIDPOINT:{
+        if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
+            _params.push_back(param);
+            ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
+            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            constrInfo cinfo(type,{new ConstrPOnL(*pt,*line),new ConstrMidVal(pt->x,line->beg->x,line->end->x),new ConstrMidVal(pt->y,line->beg->y,line->end->y)},uids);
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added midpoint for point " << *pt << " and line " << *line << std::endl;
+            added = true;
+        }
+        break;
+    }
+    case CT_COLLINEAR:{
+        if ( uids.size() >1  && uids.size() == grouped[OT_SEGMENT].size()  ) {
+            for (size_t k= 0; k < uids.size()-1; ++k) {
+                lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
+                lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
+                constrInfo cinfo(type,{new ConstrL2LParal(*line0,*line1),new ConstrPOnL(*(line0->beg),*line1)},{uids[k],uids[k+1]});//CT_COLLINEAR;
+                constrainEntities({uids[k],uids[k+1]},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added collinear between line " << *line0 << " and line " << *line1 << std::endl;
+            }
+            added = true;
+        }
+        break;
+    }
+    case CT_SYMMETRIC:{
+        if ( uids.size() == 3 && grouped[OT_POINT].size() == 2 && grouped[OT_SEGMENT].size() == 1){
+            ptrep* pt0 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
+            ptrep* pt1 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][1]].obj);
+            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            constrInfo cinfo(type,{ new ConstrPP2LSym(*pt0,*pt1,*line),new ConstrL2LOrtho(*pt0,*pt1,*line)},uids);
+            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            MOOLOG << "Core::tryAddConstraint - added symmetric between point " << *pt0 << ", point  " << *pt1 << " and line " << *line << std::endl;
+            added = true;
         }
         break;
     }
@@ -822,7 +848,7 @@ RESCODE georis::Core::addConstraint(ConstraintType type,const std::vector<UID> &
         size_t c = 0;
         while (c < objInfo::MAXCHILDS && (*it).second.objChilds[c] != NOUID){
             for (size_t k1 = 0;k1< uids.size();++k1)
-                if (uids[k] == (*it).second.objChilds[c]) return -1;
+                if (uids[k] == (*it).second.objChilds[c]) return RC_INVALIDARG;
             ++c;
         }
     }
@@ -1024,7 +1050,7 @@ void georis::Core::filterChildObj(std::vector<UID> &objs)const{
     size_t k = 0;
     while (k < objs.size() ){
         UID uidpar = NOUID;
-        for ( auto obj : m_objects )
+        for ( auto &obj : m_objects )
             if ( obj.second.hasChild(objs[k]) ) {
                 uidpar = obj.first;
                 break;
@@ -1072,89 +1098,99 @@ std::vector<double*> georis::Core::constrGroup::getTunableParams()const{
     std::set<double*> sorter;
     std::vector<double*> fixed;
     for ( auto& constr: constraints ){
-        for ( auto& csc: constr.second.errors )
-            sorter.insert(csc->cparam().begin(),csc->cparam().end() );
-        if (constr.second.type == CT_FIX){
-            for ( auto objid : constr.second.objs ){
-
+        if (constr.second.type != CT_FIX)
+            for ( auto& csc: constr.second.errors ){
+                for (auto pa : csc->cparam())
+                    sorter.insert(pa);
             }
+        else {
             // fill in fixed parameters
+            for ( auto objid : constr.second.objs ){
+                //fixed.push_back( objid );
+            }
         }
     }
     std::vector<double*>  res;
     std::set_difference(sorter.begin(),sorter.end(),fixed.begin(),fixed.end(),std::back_inserter(res));
     return res;
 }
-bool georis::Core::constrGroup::areParallel(const std::vector<UID> &segmentsinq){
-    if ( segmentsinq.size() < 2) return false;
+/*
+ * ct [in] - constraint type, may be for points - CT_COINCIDENT, for segments - CT_PARALLEL, CT_COLLINEAR, for circles and arcs - CT_CONCENTRIC
+ * objects [in] - obj UIDs
+ * returns true if all objects are under given constraint
+*/
+bool georis::Core::constrGroup::verifyTransitive(ConstraintType ct, const std::vector<UID> &objects){
+    if ( objects.size() < 2) return false;
 
-    // Filter only parallel constraints and find objects constrained by them
-    struct parconstrinfo{
-        bool used;
-        UID first;
-        UID second;
-    };
-    std::map<UID,parconstrinfo> objByParConstr;
-    struct parseginfo{
-        bool used;
-        std::vector<UID> constrs;
-    };
-    std::map<UID,parseginfo > parConstrByObj;
-    for (auto & constr : constraints ){
-        if ( constr.second.type == CT_PARALLEL ){
-            //parallelConstrs.push_back(constr.first);
-            objByParConstr[constr.first] = {false,constr.second.objs[0],constr.second.objs[1]};
-            parConstrByObj[constr.second.objs[0]].used = false;
-            parConstrByObj[constr.second.objs[0]].constrs.push_back(constr.first);
-            parConstrByObj[constr.second.objs[1]].constrs.push_back(constr.first);
-        }
-    }
-    if ( parConstrByObj.size() < segmentsinq.size() || objByParConstr.size() < segmentsinq.size() - 1 ) return false;
-
-    std::stack<UID> c2do;
-    c2do.push(objByParConstr.begin()->first);
-    size_t usedConstrs = 0;
-    std::set<UID> constrained;
-    while( usedConstrs != objByParConstr.size() ){
-        UID currconstr = c2do.top();
-        c2do.pop();
-        ++usedConstrs;
-        // Пометить ограничение как использованное
-        objByParConstr[currconstr].used = true;
-        // Добавить в множество ограниченных отрезков отрезки, связанные данным ограничением
-        constrained.insert(objByParConstr[currconstr].first);
-        constrained.insert(objByParConstr[currconstr].second);
-        // Для всех отрезков, участвующих в данном ограничении
-        // взять все неиспользованные ограничения, связанные с данными отрезками и положить в стек
-        for ( auto constrid: parConstrByObj[objByParConstr[currconstr].first].constrs ){
-            if ( !objByParConstr[constrid].used )
-                c2do.push(constrid);
-        }
-        for ( auto constrid: parConstrByObj[objByParConstr[currconstr].second].constrs ){
-            if ( !objByParConstr[constrid].used )
-                c2do.push(constrid);
-        }
-        //
-        if ( c2do.empty() ){
-            if ( constrained.find(segmentsinq[0]) != constrained.end() ){
-                if ( constrained.size() < segmentsinq.size() )
-                    return false;
-                bool notFound = false;
-                for (size_t k = 1;k < segmentsinq.size();++ k )
-                    if ( constrained.find(segmentsinq[k]) == constrained.end() ){
-                        notFound = true;
-                        break;
-                    }
-                if ( notFound ) return false;
-                return true;
+    if ( ct == CT_PARALLEL ){
+        // Filter only parallel constraints and find objects constrained by them
+        struct parconstrinfo{
+            bool used;
+            UID first;
+            UID second;
+        };
+        std::map<UID,parconstrinfo> objByParConstr;
+        struct parseginfo{
+            bool used;
+            std::vector<UID> constrs;
+        };
+        std::map<UID,parseginfo > parConstrByObj;
+        for (auto & constr : constraints ){
+            if ( constr.second.type == CT_PARALLEL ){
+                //parallelConstrs.push_back(constr.first);
+                objByParConstr[constr.first] = {false,constr.second.objs[0],constr.second.objs[1]};
+                parConstrByObj[constr.second.objs[0]].used = false;
+                parConstrByObj[constr.second.objs[0]].constrs.push_back(constr.first);
+                parConstrByObj[constr.second.objs[1]].constrs.push_back(constr.first);
             }
-            else{
-                constrained.clear();
-                // Найдем неиспользованное ограничение
-                for ( auto co: objByParConstr ){
-                    if ( ! co.second.used ){
-                        c2do.push( co.first );
-                        break;
+        }
+        if ( parConstrByObj.size() < objects.size() || objByParConstr.size() < objects.size() - 1 ) return false;
+
+        std::stack<UID> c2do;
+        c2do.push(objByParConstr.begin()->first);
+        size_t usedConstrs = 0;
+        std::set<UID> constrained;
+        while( usedConstrs != objByParConstr.size() ){
+            UID currconstr = c2do.top();
+            c2do.pop();
+            ++usedConstrs;
+            // Пометить ограничение как использованное
+            objByParConstr[currconstr].used = true;
+            // Добавить в множество ограниченных отрезков отрезки, связанные данным ограничением
+            constrained.insert(objByParConstr[currconstr].first);
+            constrained.insert(objByParConstr[currconstr].second);
+            // Для всех отрезков, участвующих в данном ограничении
+            // взять все неиспользованные ограничения, связанные с данными отрезками и положить в стек
+            for ( auto constrid: parConstrByObj[objByParConstr[currconstr].first].constrs ){
+                if ( !objByParConstr[constrid].used )
+                    c2do.push(constrid);
+            }
+            for ( auto constrid: parConstrByObj[objByParConstr[currconstr].second].constrs ){
+                if ( !objByParConstr[constrid].used )
+                    c2do.push(constrid);
+            }
+            //
+            if ( c2do.empty() ){
+                if ( constrained.find(objects[0]) != constrained.end() ){
+                    if ( constrained.size() < objects.size() )
+                        return false;
+                    bool notFound = false;
+                    for (size_t k = 1;k < objects.size();++ k )
+                        if ( constrained.find(objects[k]) == constrained.end() ){
+                            notFound = true;
+                            break;
+                        }
+                    if ( notFound ) return false;
+                    return true;
+                }
+                else{
+                    constrained.clear();
+                    // Найдем неиспользованное ограничение
+                    for ( auto co: objByParConstr ){
+                        if ( ! co.second.used ){
+                            c2do.push( co.first );
+                            break;
+                        }
                     }
                 }
             }
@@ -1240,6 +1276,7 @@ void georis::Core::constrainTwo(UID objuid0, UID objuid1, constrInfo& cinfo, UID
 
 }
 */
+
 void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo& cinfo, UID* puid){
     assert(objuids.size() < 3);
     // Generate new constraint ID

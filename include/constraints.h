@@ -4,6 +4,7 @@
 #include "ConstrEqual.h"
 #include "ConstrP2PDist.h"
 #include "ConstrP2LDist.h"
+#include "ConstrPP2LSym.h"
 #include "ConstrL2LAngle.h"
 #include "ConstrL2LOrtho.h"
 #include "ConstrL2LOrtho2.h"
