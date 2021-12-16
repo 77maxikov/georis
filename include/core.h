@@ -50,7 +50,7 @@ public:
     RESCODE moveObjects(const std::vector<UID>& objs,double dx, double dy);    
 
     void filterChildObj(std::vector<UID> &objs)const;
-
+    void calcAABB(point2r &tl,point2r&br)const;
 private:
     UID internalAddPoint(double x,double y,ptrep** res = nullptr);
     void internalRemovePoint(UID);
@@ -68,7 +68,7 @@ private:
 
     int findConstrGroupByConstrID(UID)const;
     int findConstrGroupByObjID(UID)const;
-    void mergeConstrGroups(int,int);
+    int mergeConstrGroups(std::vector<int>&inds);
     void updateConstrGroups2Obj(UID, UID);
     void removeFixedParameters(std::vector<double*>& param );
 
@@ -97,8 +97,6 @@ private:
         std::vector<double*> getTunableParams()const;
 
         bool isLinkingConstr(UID) const;
-
-
         bool verifyTransitive(ConstraintType ct, const std::vector<UID> &elements);
     };
 

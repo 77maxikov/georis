@@ -1,0 +1,29 @@
+<svg width="1000" height="1000">
+    <point id="1" x="0" y="0" name="Точка1" parentid="3"/>
+    <point id="2" x="0" y="1" name="Точка2" parentid="3"/>
+    <line id="3" x1="0" y1="0" x2="0" y2="1" name="Отрезок1" stroke="red" stroke-width="5"/>
+    <point id="4" x="1" y="0" name="Точка3"/>
+    <point id="5" x="-1" y="1" name="Точка4"/>
+
+    <point id="8" x="2" y="0" name="Точка5" parentid="10"/>
+    <point id="9" x="2" y="1" name="Точка6" parentid="10"/>
+    <line id="10" x1="2" y1="0" x2="2" y2="1" name="Отрезок2" stroke="red" stroke-width="5"/>
+    <point id="11" x="3" y="0" name="Точка7"/>
+    <point id="12" x="-2" y="1" name="Точка8"/>
+    <constraint id="6" type="13" name="Симметрично1">
+        <obj idref="3"/>
+        <obj idref="4"/>
+        <obj idref="5"/>
+    </constraint>
+    <constraint id="7" type="2" name="Вертикально1">
+        <obj idref="3"/>
+    </constraint>
+    <constraint id="13" type="13" name="Симметрично2">
+        <obj idref="10"/>
+        <obj idref="11"/>
+        <obj idref="12"/>
+    </constraint>
+    <constraint id="14" type="3" name="Горизонтально1">
+        <obj idref="10"/>
+    </constraint>
+</svg>

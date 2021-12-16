@@ -46,6 +46,7 @@ SOURCES += ../src/test.cpp \
    ../src/objutils.cpp \
    ../src/optim/SolverLM.cpp \
    ../src/optim/SolverNG.cpp \
+    ../src/optim/SolverNReg.cpp \
    ../src/uid.cpp
 
 HEADERS  += \
@@ -60,6 +61,7 @@ HEADERS  += \
     ../include/constraints/ConstrL2LParal.h \
     ../include/constraints/ConstrP2LDist.h \
     ../include/constraints/ConstrP2PDist.h \
+    ../include/constraints/ConstrPP2LSym.h \
     ../include/constraints/IConstraint.h \
     ../include/controller.h \
     ../include/core.h \
@@ -69,6 +71,14 @@ HEADERS  += \
     ../include/mooLog.h \
     ../include/objects.h \
     ../include/objinfo.h \
+    ../include/optim/IOptFunc.h \
+    ../include/optim/IOptSolver.h \
+    ../include/optim/SolverLM.h \
+    ../include/optim/SolverNG.h \
+    ../include/optim/SolverNReg.h \
+    ../include/optim/ap.h \
+    ../include/optim/common_optim.h \
+    ../include/optim/line_search.h \
     ../include/uid.h
 
 #LIBS += -lglut

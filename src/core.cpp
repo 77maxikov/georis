@@ -9,12 +9,14 @@ typedef std::chrono::high_resolution_clock Clock;
 #include "constraints.h"
 #include "SolverLM.h"
 #include "SolverNG.h"
+#include "SolverNReg.h"
 #include "SolverCeres.h"
 #include "GeosFunc.h"
 #include "GeosFuncN.h"
 
 #include "mooLog.h"
 #include "objutils.h"
+#include "scaler.h"
 
 georis::Core::Core() {
     //ctor
@@ -252,8 +254,8 @@ RESCODE georis::Core::removeObject(UID remUID) {
     }
     case OT_SEGMENT: {
         // Remove constraints
-        for (auto it = (*objit).second.constrs.begin();it != (*objit).second.constrs.end();++it)
-            removeConstraint(*it);
+        for (auto constr : (*objit).second.constrs)
+            removeConstraint(constr);
         // Remove child objects
         internalRemovePoint( (*objit).second.objChilds[0] );
         internalRemovePoint( (*objit).second.objChilds[1] );
@@ -359,7 +361,7 @@ RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&pa
 void georis::Core::enumObjs(std::vector<UID> &uids)const{
     uids.clear();
     uids.reserve(m_objects.size());
-    for (auto it : m_objects){
+    for (auto &it : m_objects){
         uids.push_back(it.first);
     }
 }
@@ -802,8 +804,8 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             ptrep* pt0 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
             ptrep* pt1 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][1]].obj);
             lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
-            constrInfo cinfo(type,{ new ConstrPP2LSym(*pt0,*pt1,*line),new ConstrL2LOrtho(*pt0,*pt1,*line)},uids);
-            constrainEntities({uids[0], uids[1]}, cinfo, puid);
+            constrInfo cinfo(type,{ new ConstrPP2LSym(*pt0,*pt1,*line),new ConstrL2LOrtho2(*pt0,*pt1,*line)},uids);
+            constrainEntities(uids, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added symmetric between point " << *pt0 << ", point  " << *pt1 << " and line " << *line << std::endl;
             added = true;
         }
@@ -890,18 +892,18 @@ RESCODE georis::Core::removeConstraint(UID id2rem) {
 RESCODE georis::Core::queryConstrInfo(UID uid,ConstraintType &type,std::vector<UID> &objs,double *pparam)const {
     int ng = findConstrGroupByConstrID(uid);
     if ( ng < 0 ) return RC_NO_OBJ;
-    for ( auto constrgr:m_constrGroups ){
-        type = constrgr.constraints[uid].type;
-        objs.clear();
-        objs = constrgr.constraints[uid].objs;
-    }
+
+    type = m_constrGroups[ng].constraints.at(uid).type;
+    objs.clear();
+    objs = m_constrGroups[ng].constraints.at(uid).objs;
+    filterChildObj(objs);
 
     return RC_OK;
 }
 void georis::Core::enumConstraints(std::vector<UID>&uids)const{
     uids.clear();
-    for (auto grit : m_constrGroups){
-        for ( auto cit: grit.constraints )
+    for (auto &grit : m_constrGroups){
+        for ( auto &cit: grit.constraints )
             uids.push_back(cit.first);
     }
 }
@@ -940,6 +942,10 @@ int georis::Core::solve(){
         for (auto& cgroup: m_constrGroups ){
             if ( cgroup.unsolved ){
                 std::vector<double*> params = cgroup.getTunableParams();
+                if ( params.size() == 9 ){
+                    params.clear();
+                    params = cgroup.getTunableParams();
+                }
                 //MOOLOG << "Core::solve - there are "<< params.size() << " params total" << std::endl;
                 //removeFixedParameters(params);
                 MOOLOG << "Core::solve - there are "<< params.size() << " tunable params" << std::endl;
@@ -960,23 +966,54 @@ int georis::Core::solve(){
                 for (size_t k = 0; k<params.size(); ++k)
                     geotask.x0(k) = *params[k];
                 v_type err = func(geotask.x0);
-                MOOLOG << "Core::solve - initial error = " <<std::endl << err << std::endl << ", norm = " << (err.transpose()*err) << std::endl;
+
+                //Scale values of target
+
+                v_type scaler = err.cwiseAbs();
+                for (size_t k = 0;k < scaler.size();++k)
+                    if ( scaler(k) < 1e-6 )
+                        scaler(k) = 1;
+                    else
+                        scaler(k) = 1/scaler(k);
+                MOOLOG << "Core::solve - scaler " << std::endl << scaler.transpose() <<std::endl;
+
+                ScaledOptFuncN scaledtarget(geotask.target, scaler);
+                if (0){
+                    geotask.target = &scaledtarget;
+                    err = (*geotask.target)(geotask.x0);
+                }
+
+
+
+                MOOLOG << "Core::solve - initial error norm = " << (err.transpose()*err)  << ",  error = " <<
+                          std::endl << err << std::endl;
                 MOOLOG << "Core::solve - at " << std::endl << geotask.x0 << std::endl;
                 geotask.stopcond.tolx = 1e-8;
                 geotask.stopcond.tolf = 1e-8;
                 geotask.stopcond.fevals = 10000;
 
                 //SolverCeres solver;
-                //SolverLM solver;
-                SolverNG solver;
 
+                //SolverNG solver;
+                /*
+                if ( func.inDim() < func.outDim() ){
+                    SolverLM solver;
+                    solver.solve(geotask);
+                }
+                else{
+                    SolverNG solver;
+                    solver.solve(geotask);
+                }
+                */
+                SolverNReg solver;
                 solver.solve(geotask);
+
 
                 for (size_t k = 0; k<params.size(); ++k)
                     geotask.x0(k) = *params[k];
                 err = func(geotask.x0);
-                MOOLOG << "Core::solve - final error = "<< std::endl << err << std::endl  << ", norm = " << (err.transpose()*err) << std::endl;
-                MOOLOG << "Core::solve - at " << std::endl << geotask.x0 << std::endl;
+                MOOLOG << "Core::solve - final error norm = "<< err.norm() << ", err = " << std::endl  << err << std::endl;
+                MOOLOG << "Core::solve - at " << std::endl << geotask.x0.transpose() << std::endl;
                 //MOOLOG << "=============================" << std::endl;
                 cgroup.unsolved = false;
             }
@@ -1100,8 +1137,9 @@ std::vector<double*> georis::Core::constrGroup::getTunableParams()const{
     for ( auto& constr: constraints ){
         if (constr.second.type != CT_FIX)
             for ( auto& csc: constr.second.errors ){
-                for (auto pa : csc->cparam())
+                for (auto pa : csc->cparam()){
                     sorter.insert(pa);
+                }
             }
         else {
             // fill in fixed parameters
@@ -1198,88 +1236,32 @@ bool georis::Core::constrGroup::verifyTransitive(ConstraintType ct, const std::v
     }
     return false;
 }
-void georis::Core::mergeConstrGroups(int ng1,int ng2){
-    assert(0<=ng1 && ng1 < m_constrGroups.size());
-    assert(0<=ng2 && ng2 < m_constrGroups.size());
-    if ( ng1 == ng2 ) return;
-    int mi = std::min(ng1,ng2);
-    int ma = std::max(ng1,ng2);
-    for ( auto constr: m_constrGroups[ma].constraints )
-        m_constrGroups[mi].constraints[constr.first] = constr.second;
-    m_constrGroups.erase(m_constrGroups.begin() + ma);
-    m_constrGroups[mi].unsolved = true;
+int georis::Core::mergeConstrGroups(std::vector<int>& ngs){
+    std::sort( ngs.begin(),ngs.end() );
+    ngs.erase( std::unique( ngs.begin(), ngs.end() ), ngs.end() );
+    if (ngs.size() == 1) return ngs[0];
+    MOOLOG << "Core::mergeConstrGroups merging ";
+    std::vector<int>::size_type grInd = 0;
+    if ( ngs[grInd] == -1 )
+        ++grInd;
+
+    for (std::vector<int>::size_type n = grInd+1; n < ngs.size(); ++n ){
+        MOOLOG << ngs[n] <<' ';
+    }
+    MOOLOG << " into " << ngs[grInd] << std::endl;
+
+    for (int k = ngs.size()-1; k > grInd ; --k){
+        assert(0 <= ngs[k] && ngs[k] < m_constrGroups.size());
+        for ( auto &constr: m_constrGroups[ngs[k]].constraints ){
+            m_constrGroups[ngs[grInd]].constraints[constr.first] = constr.second;
+        }
+        m_constrGroups.erase(m_constrGroups.begin() + ngs[k]);
+    }
+
+    return ngs[grInd];
 }
-/*
-void georis::Core::constrainTwo(UID objuid0, UID objuid1, constrInfo& cinfo, UID* puid){
-    UID construid = NOUID;
-    if ( puid != nullptr ){
-        if (*puid != NOUID )
-            construid = *puid;
-        else
-            *puid = construid = UIDGen::instance()->generate();
-    }
-    else
-        construid = UIDGen::instance()->generate();
-
-    cinfo.objs.push_back(objuid0);
-    cinfo.objs.push_back(objuid1);
-
-    std::vector<UID> chuids0;
-    getObjChilds(objuid0,chuids0);
-    cinfo.objs.insert(cinfo.objs.end(),chuids0.begin(),chuids0.end());
-    std::vector<UID> chuids1;
-    getObjChilds(objuid1,chuids1);
-    cinfo.objs.insert(cinfo.objs.end(),chuids1.begin(),chuids1.end());
-
-    int ng0 = 0;
-    UID uidpar0 = NOUID;
-    getObjParent(objuid0,uidpar0);
-    if ( uidpar0 == NOUID )
-        ng0 = findConstrGroupByObjID(objuid0);
-    else
-        ng0 = findConstrGroupByObjID(uidpar0);
-
-    int ng1 = 0;
-    UID uidpar1 = NOUID;
-    getObjParent(objuid1,uidpar1);
-    if ( uidpar1 == NOUID )
-        ng1 = findConstrGroupByObjID(objuid1);
-    else
-        ng1 = findConstrGroupByObjID(uidpar1);
-
-    if ( ng0 < 0 ){
-        if ( ng1 < 0 ) { // Add new group
-            m_constrGroups.push_back(constrGroup());
-            m_constrGroups.back().constraints[construid] = cinfo;
-        }
-        else{ // Add to ng1
-            m_constrGroups[ng1].constraints[construid] = cinfo;
-            m_constrGroups[ng1].unsolved = true;
-        }
-    }
-    else{
-        m_constrGroups[ng0].constraints[construid] = cinfo;
-        m_constrGroups[ng0].unsolved = true;
-
-        if ( ng1 >= 0 ) { // Merge ng0 and ng1
-            mergeConstrGroups(ng0,ng1);
-        }
-    }
-
-    m_objects[objuid0].constrs.push_back(construid);
-    if ( uidpar0 != NOUID )
-        m_objects[uidpar0].constrs.push_back(construid);
-    m_objects[objuid1].constrs.push_back(construid);
-    if ( uidpar1 != NOUID )
-        m_objects[uidpar1].constrs.push_back(construid);
-
-
-}
-*/
 
 void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo& cinfo, UID* puid){
-    assert(objuids.size() < 3);
-    // Generate new constraint ID
     UID construid = NOUID;
     if ( puid != nullptr ){
         if (*puid != NOUID )
@@ -1290,57 +1272,49 @@ void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo
     else
         construid = UIDGen::instance()->generate();
 
-    for ( auto objuid: objuids ){
-        cinfo.objs.push_back( objuid );
-        std::vector<UID> chuids;
-        getObjChilds(objuid,chuids);
-        cinfo.objs.insert(cinfo.objs.end(),chuids.begin(),chuids.end());
-    }
+    std::set<UID> sorter;
+    cinfo.objs = objuids;
 
-    int ng0 = -1;
-    UID uidpar0 = NOUID;
-    std::vector<UID> paruids;
-    getObjParent(objuids[0],uidpar0);
-    if ( uidpar0 == NOUID )
-        ng0 = findConstrGroupByObjID(objuids[0]);
-    else{
-        ng0 = findConstrGroupByObjID(uidpar0);
-        paruids.push_back(uidpar0);
-    }
-
-    int ng1 = -1;
-    if ( objuids.size() > 1 ){
-        UID uidpar1 = NOUID;
-        getObjParent(objuids[1],uidpar1);
-        if ( uidpar1 == NOUID )
-            ng1 = findConstrGroupByObjID(objuids[1]);
+    std::vector<int> ngs(objuids.size());
+    bool newGroupNeeded = true;
+    for ( size_t k = 0 ;k < objuids.size();++k){
+        // Find if an object or it's parent is already in some group
+        UID uidpar = NOUID;
+        getObjParent(objuids[k],uidpar);
+        if ( uidpar == NOUID )
+            ngs[k] = findConstrGroupByObjID(objuids[k]);
         else{
-            ng1 = findConstrGroupByObjID(uidpar1);
-            paruids.push_back(uidpar1);
+            ngs[k] = findConstrGroupByObjID(uidpar);
+            sorter.insert(uidpar);
         }
+        if ( ngs[k] >= 0 ){ // There are a constrgroup already
+            newGroupNeeded = false;
+        }
+        // Add all child objects too
+        std::vector<UID> chuids;
+        getObjChilds(objuids[k],chuids);
+        if (!chuids.empty())
+            sorter.insert(chuids.begin(),chuids.end());
+    }
+    cinfo.objs.insert(cinfo.objs.end(),sorter.begin(),sorter.end());
+
+
+    if ( newGroupNeeded ){ // Add new group
+        m_constrGroups.push_back(constrGroup());
+        m_constrGroups.back().constraints[construid] = cinfo;
+    }
+    else{ // merge groups
+        int ng2ins = mergeConstrGroups(ngs);
+        // Add to resulting group
+        m_constrGroups[ng2ins].constraints[construid] = cinfo;
+        m_constrGroups[ng2ins].unsolved = true;
     }
 
-    if ( ng0 < 0 ){
-        if ( ng1 < 0 ) { // Add new group
-            m_constrGroups.push_back(constrGroup());
-            m_constrGroups.back().constraints[construid] = cinfo;
-        }
-        else{ // Add to ng1
-            m_constrGroups[ng1].constraints[construid] = cinfo;
-            m_constrGroups[ng1].unsolved = true;
-        }
-    }
-    else{
-        m_constrGroups[ng0].constraints[construid] = cinfo;
-        m_constrGroups[ng0].unsolved = true;
-
-        if ( ng1 >= 0 ) { // Merge ng0 and ng1
-            mergeConstrGroups(ng0,ng1);
-        }
-    }
-
-    for ( auto objuid : objuids )
+    for ( auto objuid : cinfo.objs )
         m_objects[objuid].constrs.push_back(construid);
-    for ( auto paruid : paruids )
-        m_objects[paruid].constrs.push_back(construid);
+}
+
+void georis::Core::calcAABB(point2r &tl,point2r&br)const{
+    for (;;)
+        ;
 }

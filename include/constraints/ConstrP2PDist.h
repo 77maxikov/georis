@@ -15,7 +15,7 @@ public:
     ConstrP2PDist(const point2r&,const point2r&,double *dist);
     double error()const;
     double grad(const double *)const;
-    std::vector<double *> cparam()const { return {_p1x,_p1y,_p2x,_p2y,_dist}; };
+    std::vector<double *> cparam()const { return {_p1x,_p1y,_p2x,_p2y}; };
 };
 }
 #endif // _CONSTRP2PDIST_H

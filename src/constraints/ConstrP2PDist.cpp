@@ -18,7 +18,7 @@ double georis::ConstrP2PDist::error()const{
 
 double georis::ConstrP2PDist::grad(const double*var)const{
 	double d =  std::sqrt(d2());
-	if (d < epsi) throw std::runtime_error("ConstrP2PDist::points too close");
+//	if (d < epsi) throw std::runtime_error("ConstrP2PDist::points too close");
 	if (var == _p1x)
 		return (*_p1x - *_p2x)/d;
 	if (var == _p1y)

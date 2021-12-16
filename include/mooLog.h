@@ -3,6 +3,7 @@
 
 //#define NOLOG
 //#define CONSOLE_DEBUG
+#include <iomanip>
 
 #ifdef NOLOG
 #include <iostream>
