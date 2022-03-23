@@ -14,8 +14,8 @@ public:
         _initialErr = error();
     };
 	double error()const;
-	double grad(const double *v)const;
-    std::vector<double*> cparam()const{return {l11x,l11y,l12x,l12y,l21x,l21y,l22x,l22y};}
+    double grad(const paramProxy *v)const;
+    std::vector<paramProxy*> cparam()const{return {l11x,l11y,l12x,l12y,l21x,l21y,l22x,l22y};}
 
 };
 }

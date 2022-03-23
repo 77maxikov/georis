@@ -10,14 +10,14 @@ SolverLM::SolverLM() {
     _mu_dec = 2;
 
 }
-void SolverLM::setParam(const std::valarray<double>&parm) {
+void SolverLM::setparamProxy(const std::valarray<double>&parm) {
     if (parm.size() < 3)
-        throw std::invalid_argument("SolverLM::setParam - not enough params!");
+        throw std::invalid_argument("SolverLM::setparamProxy - not enough paramProxys!");
     _mu = parm[0];
     _mu_inc = parm[1];
     _mu_dec = parm[2];
 }
-void SolverLM::solve(const SolveTask &task) {
+int SolverLM::solve(const SolveTask &task) {
     if (!(*task.target).hasJacob()) throw std::invalid_argument("SolverLM::target function should provide Jacobian");
     v_type x1(task.x0);
     _bestx = x1;
@@ -116,5 +116,6 @@ MOOLOG << "_mu = " << _mu << std::endl;
     }
     MOOLOG << "SolverLM::solve - finished with flag = " << flag << " fevals " << _fevals << std::endl;
     //(*task.target)(_bestx);
+    return 0;
 }
 

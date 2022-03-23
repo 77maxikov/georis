@@ -38,6 +38,7 @@
 #include "constrMidpoint_selected.xpm"
 #include "constrConcentric.xpm"
 #include "constrConcentric_selected.xpm"
+#include "toggleAux.xpm"
 
 
 #endif // XPMS_H_INCLUDED

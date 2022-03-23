@@ -3,20 +3,20 @@
 #include <stdexcept>
 
 double georis::ConstrL2LOrtho2::error()const{
-    double a1x = *l12x - *l11x;
-    double a1y = *l12y - *l11y;
-    double a2x = *l22x - *l21x;
-    double a2y = *l22y - *l21y;
+    double a1x = *l12x->pval - *l11x->pval;
+    double a1y = *l12y->pval - *l11y->pval;
+    double a2x = *l22x->pval - *l21x->pval;
+    double a2y = *l22y->pval - *l21y->pval;
 
     //if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LOrtho2 - not a line 1!");
     //if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LOrtho2 - not a line 2!");
     return (a1x*a2x + a1y*a2y)/sqrt(a1x*a1x+a1y*a1y)/sqrt(a2x*a2x+a2y*a2y);
 }
-double georis::ConstrL2LOrtho2::grad(const double *var)const{
-    double a1x = *l12x - *l11x;
-    double a1y = *l12y - *l11y;
-    double a2x = *l22x - *l21x;
-    double a2y = *l22y - *l21y;
+double georis::ConstrL2LOrtho2::grad(const paramProxy *var)const{
+    double a1x = *l12x->pval - *l11x->pval;
+    double a1y = *l12y->pval - *l11y->pval;
+    double a2x = *l22x->pval - *l21x->pval;
+    double a2y = *l22y->pval - *l21y->pval;
 
     //if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LOrtho::grad2 - not a line 1!");
     //if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LOrtho::grad2 - not a line 2!");

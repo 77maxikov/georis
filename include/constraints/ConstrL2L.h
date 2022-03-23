@@ -7,8 +7,8 @@ public:
     ConstrL2L(const line2r&, const line2r&);
     ConstrL2L(const point2r&,const point2r&, const line2r&);
 protected:
-  	double *l11x,*l11y,*l12x,*l12y;
-	double *l21x,*l21y,*l22x,*l22y;
+    paramProxy *l11x,*l11y,*l12x,*l12y;
+    paramProxy *l21x,*l21y,*l22x,*l22y;
 
 };
 }

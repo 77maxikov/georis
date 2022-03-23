@@ -28,7 +28,7 @@ public:
 
    virtual void setController(georis::Controller *ctrl);
    virtual void drawObject(ObjectType type, const std::vector<double> &param,unsigned status = MODE_NORMAL);
-
+   virtual void displayConstraint(DCType type, double value,const std::vector<double> &param,unsigned status = MODE_NORMAL);
    virtual void setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
                             const std::vector< std::pair<UID,std::string> > &constrsSel,
                             const std::vector<georis::ConstraintType>& constrsAvail);
@@ -47,7 +47,7 @@ public:
 
 
 private:
-   georis::Controller *_controller;
+   georis::Controller *m_controller;
    GeGlWindow *_glWindow;
    Fl_Toolbar *_toolbar;
    GeInfoWindow *_infowin;

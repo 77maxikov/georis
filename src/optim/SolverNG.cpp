@@ -6,7 +6,7 @@
 SolverNG::SolverNG() {
     _fevals = 0;
 }
-void SolverNG::solve(const SolveTask &task) {
+int SolverNG::solve(const SolveTask &task) {
     if (!(*task.target).hasJacob()) throw std::invalid_argument("SolverNG::target function should provide Jacobian");
     v_type x1(task.x0);
     _bestx = x1;
@@ -129,5 +129,6 @@ MOOLOG  << "SolverNG::solve - Jacob:" << std::endl << jacob << std::endl;
     }
 MOOLOG << "SolverNG::solve - finished with flag = " << flag << " fevals " << _fevals << std::endl;
 (*task.target)(_bestx);
+    return 0;
 }
 

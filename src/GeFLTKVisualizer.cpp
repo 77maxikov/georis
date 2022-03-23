@@ -8,7 +8,7 @@
 #include "../res/xpms.h"
 
 georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Window(W, H, L) {
-    _controller = nullptr;
+    m_controller = nullptr;
     resizable(this);
 
     Fl_Group * group = new Fl_Group(20,40,W-20,H-20);
@@ -40,7 +40,7 @@ georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Doub
 
     _toolbar->addDivider();
     _modebuttons[IM_POINT] = _toolbar->AddCheckButton("Точка",new Fl_Pixmap(drawPoint_xpm),new Fl_Pixmap(drawPoint_selected_xpm), cbDrawPoint,1);
-    _modebuttons[IM_LINE] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
+    _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
     _toolbar->addDivider();
     _modebuttons[IM_CIRCLE] = _toolbar->AddCheckButton("Окружность",new Fl_Pixmap(drawCircle_xpm),new Fl_Pixmap(drawCircle_selected_xpm), cbDrawCircle,1);
     _modebuttons[IM_ARC] = _toolbar->AddCheckButton("Дуга",new Fl_Pixmap(drawArc_xpm),new Fl_Pixmap(drawArc_selected_xpm), cbDrawArc,1);
@@ -62,8 +62,8 @@ georis::GeFLTKVisualizer::~GeFLTKVisualizer() {
     if (_glWindow) delete _glWindow;
 }
 void georis::GeFLTKVisualizer::setController(georis::Controller *ctrl) {
-    if (_controller == nullptr && ctrl != nullptr) {
-        _controller = ctrl;
+    if (m_controller == nullptr && ctrl != nullptr) {
+        m_controller = ctrl;
         _glWindow->show();
         _glWindow->setController(ctrl);
         _infowin->setController(ctrl);
@@ -81,18 +81,10 @@ void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
     //MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
 	_glWindow->setMode(mode);
 
-	if (mode != IM_NONE){
-		if (!_modebuttons[mode]->value()){
-            for (auto it : _modebuttons )
-                it.second->value(0);
-			_modebuttons[mode]->value(1);
-		}
-	}
-	else{
-        for (auto it : _modebuttons )
-            it.second->value(0);
-	}
-
+    for (auto it : _modebuttons )
+        it.second->value(0);
+    if ( mode != IM_NONE )
+        _modebuttons[mode]->value(1);
 }
 void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
 
@@ -101,67 +93,69 @@ void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
 
 }
 int georis::GeFLTKVisualizer::processKeyboard(int key) {
-//MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
-    switch (key) {
-    case FL_Escape: // ESC
-            _controller->resetHighlight();
-            _controller->resetSelection();
+    //MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
+    if (m_controller) {
+        switch (key) {
+        case FL_Escape: // ESC
+            m_controller->resetHighlight();
+            m_controller->resetSelection();
 
-			setInputMode(IM_NONE);
-        break;
-    case FL_Delete: // DEL
-        if (_controller)
-            _controller->deleteSelected();
-        break;
-    case 'q':
-    case 'Q':
-        exit(key);
-        break;
-    case 'l':
-    case 'L':
-			setInputMode(IM_LINE);
-        break;
-    case 'p':
-    case 'P':
-        setInputMode(IM_POINT);
-        break;
-    case 'c':
-    case 'C':
-        setInputMode(IM_CIRCLE);
-        break;
-    case 'f':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_FIX);
-        break;
-    case 'z':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_PARALLEL);
-        break;
-    case 'd':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_DISTANCE,1);
-        break;
-    case 'o':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_ORTHO);
-        break;
-    case 'v':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_VERTICAL);
-        break;
-    case 'h':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_HORIZONTAL);
-        break;
-    case 'x':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_COINCIDENT);
-        break;
-    case 't':
-        //if ( _input_mode == IM_NONE )
-            if (_controller) _controller->constrainSelected(georis::CT_TANGENT);
-        break;
-   }
+            setInputMode(IM_NONE);
+            break;
+        case FL_Delete: // DEL
+            if (m_controller)
+                m_controller->deleteSelected();
+            break;
+        case 'q':
+        case 'Q':
+            exit(key);
+            break;
+        case 'l':
+        case 'L':
+            setInputMode(IM_SEGMENT);
+            break;
+        case 'p':
+        case 'P':
+            setInputMode(IM_POINT);
+            break;
+        case 'c':
+        case 'C':
+            setInputMode(IM_CIRCLE);
+            break;
+        case 'f':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_FIX);
+            break;
+        case 'z':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_PARALLEL);
+            break;
+        case 'd':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_DISTANCE,1);
+            break;
+        case 'o':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_ORTHO);
+            break;
+        case 'v':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_VERTICAL);
+            break;
+        case 'h':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_HORIZONTAL);
+            break;
+        case 'x':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_COINCIDENT);
+            break;
+        case 't':
+            //if ( _input_mode == IM_NONE )
+            m_controller->constrainSelected(georis::CT_TANGENT);
+            break;
+        }
+    }
    _glWindow->redraw();
 	return 1;
 }
@@ -179,22 +173,41 @@ void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<dou
     case georis::OT_ARC:
         _glWindow->drawArc(param[0],param[1],param[2],param[3],param[4],param[5],status);
         break;
-    case georis::OT_LINDIM:
-        _glWindow->drawDimLine(param[0],param[1],param[2],param[3],param[4],param[5],status);
-        break;
-    case georis::OT_CIRCDIM:
-        _glWindow->drawDimLine(param[0],param[1],param[2],param[3],param[4],status);
-        break;
+
     default:
         ;
     }
 
 }
+void georis::GeFLTKVisualizer::displayConstraint(DCType type, double value,const std::vector<double> &param,unsigned status){
+
+    char buff[32];
+    snprintf(buff,sizeof(buff),"%.2f",value);
+
+    switch (type){
+    case georis::DCT_LINDIM:{
+        _glWindow->drawDimLine(param[0],param[1],param[2],param[3],param[4],param[5],buff,status);
+        break;
+    }
+    case georis::DCT_CIRCDIM:
+        _glWindow->drawRadiusDimLine(param[0],param[1],value,param[2],param[3],buff,status);
+        break;
+    case georis::DCT_ANGLEDIM:
+        _glWindow->drawAngleDimLine(param[0],param[1],param[2],param[3],param[4],param[5],buff,status);
+        break;
+
+    defaut:
+        ;
+    }
+}
+
 void georis::GeFLTKVisualizer::cbFileNew(Fl_Widget*w, void*d) {
-    if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->createNew();
+    ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->createNew();
 }
 
 void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
+    ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
     Fl_Native_File_Chooser fnfc;
     fnfc.title("Pick a file");
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
@@ -212,14 +225,15 @@ void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
             MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
         break;  // FILE CHOSEN
     }
-    if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->loadFrom(fnfc.filename());
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->loadFrom(fnfc.filename());
 }
 
 void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
     Fl_Native_File_Chooser fnfc;
     fnfc.title("Pick a file");
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
-    //fnfc.filter("Text\t*.txt\nC Files\t*.{cxx,h,c}");
+    fnfc.filter("Georis XML\t*.grx\nSQL\t*.{sql}");
+//    fnfc.filter("Georis XML\t*.grx\nSQL\t*.{cxx,h,c}");
     fnfc.directory(".");           // default directory to use
 // Show native chooser
     switch ( fnfc.show() ) {
@@ -233,7 +247,7 @@ void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
             MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
         break;  // FILE CHOSEN
     }
-    if (((GeFLTKVisualizer*)(w->parent()->parent()))->_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->_controller->saveTo(fnfc.filename());
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->saveTo(fnfc.filename());
 }
 void georis::GeFLTKVisualizer::cbUndo(Fl_Widget*w, void*d) {
 
@@ -254,7 +268,7 @@ void georis::GeFLTKVisualizer::cbDrawLine(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
 	else
-        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_LINE);
+        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_SEGMENT);
 }
 void georis::GeFLTKVisualizer::cbDrawCircle(Fl_Widget*w, void*d) {
 	if (!((Fl_ImageCheckButton*)w)->value() )
@@ -297,12 +311,12 @@ void georis::GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::s
 */
 
 /*
-void GeFLTKVisualizer::setSelectionParams(const std::vector<UIConstrInfo> &constrInfos,const GeoObjInfo *objInfo){
-    MOOLOG << "GeFLTKVisualizer::setSelectionParams " << constrInfos.size() << std::endl;
+void GeFLTKVisualizer::setSelectionparamProxys(const std::vector<UIConstrInfo> &constrInfos,const GeoObjInfo *objInfo){
+    MOOLOG << "GeFLTKVisualizer::setSelectionparamProxys " << constrInfos.size() << std::endl;
 	if (objInfo != nullptr ){
         MOOLOG << "\tobjInfo.type " << objInfo->type << std::endl;
-		for ( size_t k = 0;k < objInfo->param.size();++k )
-            MOOLOG << "\tobjInfo.param[" << k << "] " << objInfo->param[k] << std::endl;
+		for ( size_t k = 0;k < objInfo->paramProxy.size();++k )
+            MOOLOG << "\tobjInfo.paramProxy[" << k << "] " << objInfo->paramProxy[k] << std::endl;
         MOOLOG << "\tobjInfo.status" << objInfo->status << std::endl;
 	}
 

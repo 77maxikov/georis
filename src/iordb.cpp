@@ -5,9 +5,9 @@
 #include <sstream>
 #include "mooLog.h"
 
-RESCODE georis::RDBWriter::prepare(const char *fname){
+RESCODE georis::RDBWriter::prepare(const std::string& fname){
     m_uNumObjs = 0;
-    m_szFName = fname;
+    m_szFName = fname.c_str();
     m_fs.open(fname,std::ios_base::out|std::ios_base::trunc);
     if ( !m_fs.is_open() ){
         MOOLOG << "RDBWriter: can't open file " << fname << std::endl;
@@ -30,6 +30,17 @@ RESCODE georis::RDBWriter::prepare(const char *fname){
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (7,'Ortho',0);" << std::endl;
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (8,'Tangent',0);" << std::endl;
     m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (9,'Coincident',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (10,'Midpoint',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (11,'Collinear',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (12,'Dimension',1);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (13,'Symmetric',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (14,'Concentric',0);" << std::endl;
+    m_fs << "INSERT INTO `constrtype` (`idconstrtype`,`name`,`is_parametric`) VALUES (15,'Arcus',0);" << std::endl;
+
+
+
+
+
     return RC_OK;
 }
 georis::RDBWriter::~RDBWriter(){
@@ -40,7 +51,7 @@ georis::RDBWriter::~RDBWriter(){
 
 int layernum = 1;
 
-RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectType ot,const std::vector<double> &params,UID parent){
+RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectType ot,const std::vector<double> &params,unsigned attributes,UID parent){
 
     MOOLOG << m_sta.size() << std::endl;
 
@@ -102,12 +113,12 @@ RESCODE georis::RDBWriter::saveObject(UID uid,const std::string &name, ObjectTyp
     return RC_OK;
 }
 
-RESCODE georis::RDBWriter::saveConstraint(UID uid, const std::string &name, ConstraintType ct, const std::vector<UID> &constrobj, double *param){
+RESCODE georis::RDBWriter::saveConstraint(UID uid, const std::string &name, ConstraintType ct, const std::vector<UID> &constrobj, double *parame){
 
-    m_fs << "INSERT INTO `entity` (`identity`,`sketch`) VALUES (" << static_cast<unsigned>(uid) << ','<< layernum<< ");" << std::endl;
+    m_fs << "INSERT INTO `entity` (`identity`,`layer`) VALUES (" << static_cast<unsigned>(uid) << ','<< layernum<< ");" << std::endl;
 
-    if (param != nullptr){
-        m_fs << "INSERT INTO `constraint` (`idconstraint`,`constrtype`,`parameter`) VALUES (" << static_cast<unsigned>(uid) << ','<< static_cast<unsigned>(ct) << ',' << *param << ");" << std::endl;
+    if (parame != nullptr){
+        m_fs << "INSERT INTO `constraint` (`idconstraint`,`constrtype`,`parameter`) VALUES (" << static_cast<unsigned>(uid) << ','<< static_cast<unsigned>(ct) << ',' << *parame << ");" << std::endl;
     }
     else{
         m_fs << "INSERT INTO `constraint` (`idconstraint`,`constrtype`) VALUES (" << static_cast<unsigned>(uid) << ','<< static_cast<unsigned>(ct) << ");" << std::endl;

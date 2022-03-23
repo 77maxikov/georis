@@ -3,10 +3,10 @@
 
 #include "IVisualizer.h"
 #include <vector>
-#include <string>
-#include <stack>
+#include <iostream>
 
 #include "core.h"
+#include "dimline.h"
 
 namespace georis{
 class Controller {
@@ -16,20 +16,23 @@ public:
     void setUI(IVisualizer *);
     void updateView();
 
-    void addObject(ObjectType type, const std::vector<double> &param,const std::string &name = std::string());
+    void addObject(ObjectType type, const std::vector<double> &paramProxy,const std::string &name = std::string());
 
     size_t selectByPoint(double x,double y,double precision = 0.01);
     void selectByRect(double x1,double y1,double x2,double y2);
 
     void deleteSelected();
     void moveSelected(double dx,double dy);
-    void constrainSelected(ConstraintType type,double param = 0);
+    void constrainSelected(ConstraintType type,double parame = 0);
+    void toggleAuxSelected();
 
     void highlightObj(double x,double y,double precision = 0.01);
     void resetSelection();
     void memHighlightsDown();
     void memHighlightsUp();
     void resetHighlight();
+
+    void highlightConstrainedBy(UID,bool);
 
     void createNew();
     void saveTo(const std::string &fname);
@@ -45,12 +48,22 @@ private:
 
     bool m_bIsModified;
 
+
+
     struct EInfo{
         unsigned status;
         std::string name;
     };
 
-    struct DimInfo{
+    struct ECInfo:public EInfo{
+        ECInfo():type(DCT_NONE),value(0.0),sd(nullptr){}
+        DCType type;
+        double value;
+        std::unique_ptr<sketchDim> sd;
+
+        std::vector<double> param()const{
+            return (*sd).param();
+        };
 
     };
 
@@ -59,15 +72,18 @@ private:
     std::map<ConstraintType,int> m_lastConstrNums;
 
     std::map<UID,EInfo> m_objs;
-    std::map<UID,EInfo> m_constrs;
+    std::map<UID,ECInfo> m_constrs;
 
     UID m_memHighlights[2];
 
     void findObj(unsigned stateMask,std::vector<UID> &res);
-
     void showSelectionInfo();
+    double findObjInCirc(double x,double y,double radius,std::vector<UID> &objs,std::vector<double> *pdists = nullptr)const;
 
-    void addConstraint(ConstraintType type, const std::vector<UID> &objects,double param = 0,const std::string &name = std::string());
+    double findNearest(double x,double y,std::vector<UID> &objs)const;
+
+
+    RESCODE addConstraint(ConstraintType type, const std::vector<UID> &objects,double parame = 0,const std::string &name = std::string(),UID id = NOUID);
 
     void clearAll(){
         m_memHighlights[0] = NOUID;
@@ -79,6 +95,8 @@ private:
     }
 
     static const double _sel_precision;
+
+
 };
 }
 

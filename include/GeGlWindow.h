@@ -3,34 +3,39 @@
 #include <FL/Fl_Gl_Window.H>
 #include <FL/Fl_Box.H>
 #include "controller.h"
+#include "fontdata.h"
 
 class GeGlWindow:public Fl_Gl_Window{
    public:
       GeGlWindow(int x,int y, int w,int h,const char *name=0);
-      ~GeGlWindow();
-      void setController(georis::Controller *c){if (c) _controller = c;};
-      void setStatusBar(Fl_Box *b){_statusbar = b;};
+      void setController(georis::Controller *c){if (c) m_controller = c;};
+      void setStatusBar(Fl_Box *b){m_statusbar = b;};
       void drawPoint(double x, double y,unsigned status );
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
       void drawCircle(double x, double y, double r,unsigned status );
       //void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
       void drawArc(double cx, double cy, double bx,double by, double ex, double ey,unsigned status);
-      void drawDimLine(double x1, double y1, double x2, double y2, double x3, double y3,unsigned status);
-      void drawDimLine(double x1, double y1, double r, double x2, double y2,unsigned status);
+      void drawDimLine(double x1, double y1, double x2, double y2, double x3, double y3,const char *dimstr,unsigned status);
+      void drawRadiusDimLine(double cx, double cy, double r, double dir, double offset,const char *dimstr,unsigned status);
+      void drawAngleDimLine(double cx, double cy,double bdir, double edir,  double r, double textdir,const char *dimstr,unsigned status);
 
-      void setMode(georis::InputMode mode){_input_mode = mode; _state = 0;};
+
+      void setMode(georis::InputMode mode){m_input_mode = mode; m_state = 0;};
       virtual void resize(int x,int y, int w,int h);
-      double curX()const{return _coo[0];}
-      double curY()const{return _coo[1];}
 
    private:
-      georis::Controller *_controller;
-      Fl_Box *_statusbar;
-      float _left, _right, _top, _bottom;      
-      double _coo[8];// _coo[0:1] - current _coo[]
-      double _zoomFactor;
-      unsigned _input_mode;
-      unsigned _state;
+      Fl_Box *m_statusbar;
+
+      georis::Controller *m_controller;
+      georis::FontData m_fontdata;
+
+      float m_left, m_right, m_top, m_bottom;
+      double m_coo[8];// m_coo[0:1] - current position
+
+      const double m_zoomFactor = 0.9;
+      double m_currentZoom = 0;
+      unsigned m_input_mode;
+      unsigned m_state;
 
       void draw();
       void setColor(unsigned status);
@@ -38,6 +43,7 @@ class GeGlWindow:public Fl_Gl_Window{
       void clearBG();
       void showGrid();
       void showMode();
+      void showInfo();
       void setZoom();
       void win2int(int wx,int wy,double &ix,double &iy);
       void processMotion();
@@ -47,10 +53,11 @@ class GeGlWindow:public Fl_Gl_Window{
       void zoomIn(double px,double py);
       void zoomOut(double px,double py);
 
+      void intDrawArc(double cx, double cy, double bx,double by, double ex, double ey);
 
       int handle(int event);
 
-      double minPixelRes()const{return std::min((_right - _left)/w(), (_top - _bottom)/h());};
+      double minPixelRes()const{return std::min((m_right - m_left)/w(), (m_top - m_bottom)/h());};
 };
 
 #endif // _GEGLWINDOW_H

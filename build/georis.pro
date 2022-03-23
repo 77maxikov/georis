@@ -10,15 +10,19 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = georis
 TEMPLATE = app
-INCLUDEPATH += ../include \
-	../include/constraints \
-	../include/optim \
+INCLUDEPATH += \
+    ../include \
+    ../include/constraints \
+    ../include/optim \
     ../include/fl \
     ../externals/tinyxml2 \
-	/usr/include/eigen3
+    /usr/include/eigen3 \
+    /usr/include/freetype2 \
+    ../externals/freetype/include
 
 SOURCES += ../src/test.cpp \
     ../externals/tinyxml2/tinyxml2.cpp \
+    ../externals/freetype/src/freetype.cpp \
    ../src/GeFLTKVisualizer.cpp \
    ../src/GeGlWindow.cpp \
    ../src/GeInfoWindow.cpp \
@@ -40,6 +44,7 @@ SOURCES += ../src/test.cpp \
    ../src/fl/Fl_ImageCheckButton.cpp \
    ../src/fl/Fl_InputWindow.cpp \
    ../src/fl/Fl_Toolbar.cpp \
+    ../src/fontdata.cpp \
    ../src/iosvgx.cpp \
    ../src/iordb.cpp \
     ../src/mooLog.cpp \
@@ -58,6 +63,7 @@ HEADERS  += \
     ../include/constraints/ConstrL2LAngle.h \
     ../include/constraints/ConstrL2LEqual.h \
     ../include/constraints/ConstrL2LOrtho.h \
+    ../include/constraints/ConstrL2LOrtho2.h \
     ../include/constraints/ConstrL2LParal.h \
     ../include/constraints/ConstrP2LDist.h \
     ../include/constraints/ConstrP2PDist.h \
@@ -65,6 +71,9 @@ HEADERS  += \
     ../include/constraints/IConstraint.h \
     ../include/controller.h \
     ../include/core.h \
+    ../include/dimline.h \
+    ../include/fontdata.h \
+    ../include/geommath.h \
     ../include/georis.h \
     ../include/errors.h \
     ../include/iordb.h \
@@ -79,9 +88,10 @@ HEADERS  += \
     ../include/optim/ap.h \
     ../include/optim/common_optim.h \
     ../include/optim/line_search.h \
+    ../include/paramProxy.h \
     ../include/uid.h
 
 #LIBS += -lglut
-LIBS += -lfltk -lfltk_gl -lglut
+LIBS += -lfltk -lfltk_gl -lglut -lfreetype
 
 

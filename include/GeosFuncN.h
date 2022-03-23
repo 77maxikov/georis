@@ -8,10 +8,10 @@
 namespace georis{
 class GeosFuncN:public IOptFuncN{
     std::vector<IConstraint*> _constraints;
-    std::vector<double *> *_storage;
+    std::vector<std::vector<paramProxy *> > *_storage;
 public:
-    GeosFuncN(std::vector<double *>*s){if (!s) throw std::invalid_argument("GeosFuncN - bad parameters!");_storage = s;}
-    void add(IConstraint *c){if ( !c ) throw std::invalid_argument("GeosFuncN::add - not a constraint!");_constraints.push_back(c);};
+    GeosFuncN(std::vector< std::vector<paramProxy *> >*s){if ( s == nullptr ) throw std::invalid_argument("GeosFuncN - bad parameters!");_storage = s;}
+    void add(IConstraint *c){if ( c == nullptr ) throw std::invalid_argument("GeosFuncN::add - not a constraint!");_constraints.push_back(c);};
     size_t inDim()const{return _storage->size();};
     size_t outDim()const{return  _constraints.size();}
     bool hasJacob()const {return true;}

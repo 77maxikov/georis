@@ -22,7 +22,7 @@ public:
     RESCODE setActiveSketch(UID);
     RESCODE removeSketch(UID);
 
-    RESCODE addObject(ObjectType type, const std::vector<double>&param,UID *puid = nullptr,std::vector<UID> *pchuids = nullptr);
+    RESCODE addObject(ObjectType type, const std::vector<double>&paramProxy,UID *puid = nullptr,std::vector<UID> *pchuids = nullptr);
     RESCODE removeObject(UID);
 
     // enumerate objects on active sketch
@@ -31,7 +31,7 @@ public:
     RESCODE getObjType(UID,ObjectType &ot)const;
     RESCODE getObjParam(UID, std::vector<double>&param) const;
     RESCODE queryObjInfo(UID,ObjectType &ot,std::vector<double>&param)const;
-    RESCODE setObjParam(UID, const std::vector<double>&param);      
+    RESCODE setObjParam(UID, const std::vector<double>&param);
     RESCODE getObjParent(UID uid,UID& )const;
     RESCODE getObjChilds(UID uid,std::vector<UID>&)const;
     RESCODE getObjConstraints(UID uid,std::vector<UID>&)const;
@@ -42,15 +42,16 @@ public:
     void enumConstraints(std::vector<UID>&)const;
 
     RESCODE queryConstrInfo(UID,ConstraintType &type,std::vector<UID> &objs,double *pparam = nullptr) const;
-    RESCODE setConstrParam(UID, double param);
+    RESCODE setConstrParam(UID, double parame);
 
-    void findObjInCirc(const point2r&,double radius,std::vector<UID> &objs,std::vector<double> *pdists = nullptr)const;
-    void findObjInRect(const point2r &tl,const point2r&br,std::vector<UID> &)const;
+    double findNearest(double x,double y,std::vector<UID> &objs)const;
+    double findObjInCirc(double x,double y,double radius,std::vector<UID> &objs,std::vector<double> *pdists = nullptr)const;
+    void findObjInRect(double minx,double miny, double maxx,double maxy, std::vector<UID> &)const;
 
     RESCODE moveObjects(const std::vector<UID>& objs,double dx, double dy);    
 
     void filterChildObj(std::vector<UID> &objs)const;
-    void calcAABB(point2r &tl,point2r&br)const;
+    AABBr calcAABB()const;
 private:
     UID internalAddPoint(double x,double y,ptrep** res = nullptr);
     void internalRemovePoint(UID);
@@ -63,17 +64,19 @@ private:
     void groupObjUIDsByType(const std::vector<UID> &uids, std::map<ObjectType,std::vector<UID> > &grouped)const;
 
 
-    RESCODE tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double param,UID *puid);
+    RESCODE tryAddConstraint(ConstraintType type,const std::vector<UID> &objs,double paramProxy,UID *puid);
     int solve();
 
     int findConstrGroupByConstrID(UID)const;
     int findConstrGroupByObjID(UID)const;
     int mergeConstrGroups(std::vector<int>&inds);
+    void splitConstrGroup(size_t ind);
     void updateConstrGroups2Obj(UID, UID);
-    void removeFixedParameters(std::vector<double*>& param );
+    void removeFixedParameters(std::vector<paramProxy*>& paramProxy );
 
 
-    std::list<double> _params;
+    std::list<double> _paramVals;
+    std::list<paramProxy> _params;
     std::vector<double> _paramsBU;
     std::set<double*> _const_params;
 
@@ -82,21 +85,28 @@ private:
 	struct constrInfo{
         constrInfo(){}
         constrInfo(ConstraintType ct,
+                   const std::vector<ErrorType>& erty,
                    const std::vector<IConstraint*>& er,
-                   const std::vector<UID>& ob):type(ct),errors(er),objs(ob){};
+                   const std::vector<UID>& ob,paramProxy* pp = nullptr):type(ct),errTypes(erty),errors(er),objs(ob),param(pp){};
         ConstraintType type;
+        std::vector<ErrorType> errTypes; // Types of error functions implementing the constraint
         std::vector<IConstraint*> errors; // Error functions for constraint
 		std::vector<UID> objs; // UIDs of constrained objects
+        paramProxy* param; // Constraint param, if applicable
 	};
     struct constrGroup{
         std::map<UID, constrInfo> constraints;
         bool unsolved;
 
         constrGroup():unsolved(true){}
-        std::vector<double*> getAllParams()const;
-        std::vector<double*> getTunableParams()const;
+        std::vector<paramProxy*> getAllParams()const;
+        std::vector<paramProxy*> getTunableParams()const;
 
-        bool isLinkingConstr(UID) const;
+        std::vector<std::set<paramProxy*> > groupEqParams()const;
+        void linkEqualParams(std::vector<std::set<paramProxy*> >&);
+        void unlinkEqualParams(std::vector<std::set<paramProxy*> >&);
+        void updateEqualParamOrigVals(std::vector<std::set<paramProxy*> >&);
+
         bool verifyTransitive(ConstraintType ct, const std::vector<UID> &elements);
     };
 
@@ -107,7 +117,6 @@ private:
     std::map<UID,int> m_Sketches;
 
     void constrainEntities(const std::vector<UID>& objuids, constrInfo& cinfo, UID* puid);
-
 };
 }
 #endif // GEOSCORE_H

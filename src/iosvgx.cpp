@@ -1,14 +1,11 @@
 #include <cassert>
 #include "iosvgx.h"
 
-
-#define STROKE_WIDTH 5
-#define STROKE_COLOR "red"
 #define DOC_WIDTH 1000
 #define DOC_HEIGHT 1000
 
-RESCODE georis::SVGXWriter::prepare(const char *fname){
-    m_szFName = fname;
+RESCODE georis::SVGXWriter::prepare(const std::string& fname){
+    m_sFName = fname.c_str();
     m_RootElem = m_Doc.NewElement("svg");
     if (m_RootElem == nullptr) return RC_RUNTIME_ERR;
 
@@ -20,10 +17,16 @@ RESCODE georis::SVGXWriter::prepare(const char *fname){
 }
 georis::SVGXWriter::~SVGXWriter(){
 
-    m_Doc.SaveFile(m_szFName);
+    m_Doc.SaveFile(m_sFName.c_str());
     //m_Doc.Clear();
 }
-RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectType ot,const std::vector<double> &params,UID parent){
+RESCODE georis::SVGXWriter::saveObject(
+        UID uid,
+        const std::string &name,
+        ObjectType ot,
+        const std::vector<double> &params,
+        unsigned attributes,
+        UID parent){
     switch (ot){
     case OT_POINT:
     {
@@ -42,7 +45,7 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
     }
     case OT_SEGMENT:
     {
-        tinyxml2::XMLElement *elem = m_Doc.NewElement("line");
+        tinyxml2::XMLElement *elem = m_Doc.NewElement("segment");
         if (elem == nullptr) return RC_RUNTIME_ERR;
         elem->SetAttribute("id",(unsigned)uid);
         assert(params.size() == 4);
@@ -51,9 +54,6 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         elem->SetAttribute("x2",params[2]);
         elem->SetAttribute("y2",params[3]);
         elem->SetAttribute("name",name.c_str());
-
-        elem->SetAttribute("stroke",STROKE_COLOR);
-        elem->SetAttribute("stroke-width",STROKE_WIDTH);
 
         m_RootElem->InsertEndChild(elem);
 
@@ -69,9 +69,6 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         elem->SetAttribute("y",params[1]);
         elem->SetAttribute("r",params[2]);
         elem->SetAttribute("name",name.c_str());
-
-        elem->SetAttribute("stroke",STROKE_COLOR);
-        elem->SetAttribute("stroke-width",STROKE_WIDTH);
 
         m_RootElem->InsertEndChild(elem);
         break;
@@ -89,9 +86,6 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
         elem->SetAttribute("yf",params[5]);
         elem->SetAttribute("name",name.c_str());
 
-        elem->SetAttribute("stroke",STROKE_COLOR);
-        elem->SetAttribute("stroke-width",STROKE_WIDTH);
-
         m_RootElem->InsertEndChild(elem);
 
         break;
@@ -104,7 +98,7 @@ RESCODE georis::SVGXWriter::saveObject(UID uid,const std::string &name, ObjectTy
     return RC_OK;
 }
 
-RESCODE georis::SVGXWriter::saveConstraint(UID uid, const std::string &name, ConstraintType ct, const std::vector<UID> &constrobj, double *param){
+RESCODE georis::SVGXWriter::saveConstraint(UID uid, const std::string &name, ConstraintType ct, const std::vector<UID> &constrobj, double *parame){
     tinyxml2::XMLElement *elem = m_Doc.NewElement("constraint");
 
     if (elem == nullptr) return RC_RUNTIME_ERR;
@@ -113,8 +107,8 @@ RESCODE georis::SVGXWriter::saveConstraint(UID uid, const std::string &name, Con
     elem->SetAttribute("type", static_cast<unsigned>(ct));
     elem->SetAttribute("name",name.c_str());
 
-    if (param != nullptr)
-        elem->SetAttribute("param", *param);
+    if (parame != nullptr)
+        elem->SetAttribute("param", *parame);
     for (auto it: constrobj){
         tinyxml2::XMLElement *elco = m_Doc.NewElement("obj");
         if (elco == nullptr) return RC_RUNTIME_ERR;
@@ -131,12 +125,16 @@ RESCODE georis::SVGXReader::load(const char *fname){
     m_CurrentElem = m_Doc.FirstChildElement("svg");
     if ( m_CurrentElem == nullptr ) return RC_INVALIDARG;
     m_CurrentElem = m_CurrentElem->FirstChildElement();
+    m_lastUID = NOUID;
     return RC_OK;
+}
+UID georis::SVGXReader::getLastUID(){
+    return m_lastUID;
 }
 georis::SVGXReader::~SVGXReader(){
 }
 
-RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot,std::vector<double> &params, UID &parent){
+RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot,std::vector<double> &params,unsigned &attributes, UID &parent){
     if (m_CurrentElem == nullptr) return RC_NO_OBJ;
     if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryUnsignedAttribute("id", reinterpret_cast<unsigned *>(&uid) ) )
         return RC_RUNTIME_ERR;
@@ -156,7 +154,7 @@ RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot
              parent = NOUID;
 
     }
-    else if ( strncmp("line",m_CurrentElem->Name(),4) == 0 ){
+    else if ( strncmp("segment",m_CurrentElem->Name(),4) == 0 ){
         ot = OT_SEGMENT;
         params.resize(4);
         if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("x1", &(params[0])) ) return RC_RUNTIME_ERR;
@@ -199,9 +197,10 @@ RESCODE georis::SVGXReader::loadObject(UID &uid,std::string &name,ObjectType &ot
 
     else return RC_NO_OBJ;
     m_CurrentElem = m_CurrentElem->NextSiblingElement();
+    if ( m_lastUID < uid) m_lastUID = uid;
     return RC_OK;
 }
-RESCODE georis::SVGXReader::loadConstraint(UID &uid,std::string & name, ConstraintType &ct, std::vector<UID>&uids, double &param){
+RESCODE georis::SVGXReader::loadConstraint(UID &uid,std::string & name, ConstraintType &ct, std::vector<UID>&uids, double &parame){
     if ( m_CurrentElem == nullptr) return RC_NO_OBJ;
     if ( strncmp("constraint",m_CurrentElem->Name(),10) != 0 ) return RC_NO_OBJ;
 
@@ -212,8 +211,8 @@ RESCODE georis::SVGXReader::loadConstraint(UID &uid,std::string & name, Constrai
 
     if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryUnsignedAttribute("type", reinterpret_cast<unsigned *>(&ct) ) )
         return RC_RUNTIME_ERR;
-    if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("param", &param ) )
-        param = 0.0;
+    if ( tinyxml2::XML_SUCCESS != m_CurrentElem->QueryDoubleAttribute("param", &parame ) )
+        parame = 0.0;
 
     tinyxml2::XMLElement *elco = m_CurrentElem->FirstChildElement("obj");
     while ( elco != nullptr ){
@@ -228,6 +227,7 @@ RESCODE georis::SVGXReader::loadConstraint(UID &uid,std::string & name, Constrai
     if ( nullptr == (szName = m_CurrentElem->Attribute("name")) ) return RC_RUNTIME_ERR;
     name = szName;
     m_CurrentElem = m_CurrentElem->NextSiblingElement();
+    if ( m_lastUID < uid) m_lastUID = uid;
     return RC_OK;
 }
 

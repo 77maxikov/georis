@@ -20,7 +20,7 @@ public:
     }
     Fl_Button* AddButton(const char *name, Fl_Callback *cb=0) {
         begin();
-        Fl_Button *b = new Fl_Button(0,0,TOOLBAR_HEIGHT,TOOLBAR_HEIGHT);
+        Fl_Button *b = new Fl_Button(0,0,TOOLBAR_HEIGHT,TOOLBAR_HEIGHT,name);
         b->box(FL_FLAT_BOX);    // buttons won't have 'edges'
         //b->box(FL_BORDER_BOX);
         //b->box(FL_THIN_DOWN_BOX);

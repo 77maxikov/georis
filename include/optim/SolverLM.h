@@ -6,14 +6,14 @@ class SolverLM:public ISolver{
 public:
 	SolverLM();
 
-	void solve(const SolveTask &task);
-	void getSolution(v_type &best)const{best = _bestx;};
-	void getBestVal(s_type &)const{};
+    virtual int solve(const SolveTask &task);
+    virtual void getSolution(v_type &best)const{best = _bestx;};
+    virtual void getBestVal(s_type &)const{};
 
-	void setParam(const std::valarray<double>&parm);
-	void setParam(const std::valarray<int>&){};
-	void getParam(std::valarray<double>&v)const{};
-	void getParam(std::valarray<int>&)const{};
+    virtual void setparamProxy(const std::valarray<double>&parm);
+    virtual void setparamProxy(const std::valarray<int>&){};
+    virtual void getparamProxy(std::valarray<double>&v)const{};
+    virtual void getparamProxy(std::valarray<int>&)const{};
 
 protected:
 	unsigned _fevals;
