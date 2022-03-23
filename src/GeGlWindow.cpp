@@ -363,7 +363,6 @@ void GeGlWindow::drawAngleDimLine(double cx, double cy,double bdir, double edir,
     glPopMatrix();
 }
 void GeGlWindow::drawCircle(double px, double py, double r,unsigned status) {
-    std::cout << "Circle with R " << r << std::endl;
     setColor(status);
     setStyle(status);
 
