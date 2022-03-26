@@ -1,5 +1,5 @@
 /* XPM */
-static const char * drawLine_xpm[] = {
+static const char * drawRay_xpm[] = {
 "32 32 3 1",
 " 	c None",
 ".	c #000000",
@@ -30,9 +30,9 @@ static const char * drawLine_xpm[] = {
 "      ...                       ",
 "     .++.                       ",
 "     .++.                       ",
-"     ...                        ",
-"    .                           ",
-"   .                            ",
-"  .                             ",
-" .                              ",
+"      ..                        ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
 "                                "};

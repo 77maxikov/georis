@@ -40,7 +40,10 @@ georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Doub
 
     _toolbar->addDivider();
     _modebuttons[IM_POINT] = _toolbar->AddCheckButton("Точка",new Fl_Pixmap(drawPoint_xpm),new Fl_Pixmap(drawPoint_selected_xpm), cbDrawPoint,1);
-    _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
+    _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawSegment_xpm),new Fl_Pixmap(drawSegment_selected_xpm), cbDrawLine,1);
+    _modebuttons[IM_RAY] = _toolbar->AddCheckButton("Луч",new Fl_Pixmap(drawRay_xpm),new Fl_Pixmap(drawRay_selected_xpm), cbDrawLine,1);
+    _modebuttons[IM_LINE] = _toolbar->AddCheckButton("Прямая",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
+
     _toolbar->addDivider();
     _modebuttons[IM_CIRCLE] = _toolbar->AddCheckButton("Окружность",new Fl_Pixmap(drawCircle_xpm),new Fl_Pixmap(drawCircle_selected_xpm), cbDrawCircle,1);
     _modebuttons[IM_ARC] = _toolbar->AddCheckButton("Дуга",new Fl_Pixmap(drawArc_xpm),new Fl_Pixmap(drawArc_selected_xpm), cbDrawArc,1);

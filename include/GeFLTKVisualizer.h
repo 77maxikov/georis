@@ -41,6 +41,8 @@ public:
 
    static void cbDrawPoint(Fl_Widget*, void*);
    static void cbDrawLine(Fl_Widget*, void*);
+   static void cbDrawRay(Fl_Widget*, void*);
+   static void cbDrawSegment(Fl_Widget*, void*);
    static void cbDrawCircle(Fl_Widget*, void*);
    static void cbDrawArc(Fl_Widget*, void*);
    static void cbDrawRect(Fl_Widget*, void*);
