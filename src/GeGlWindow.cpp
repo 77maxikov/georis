@@ -574,6 +574,8 @@ void GeGlWindow::showInfo(){
     glPushMatrix();
     glTranslatef(m_left,m_bottom,0);
     glScalef(m_currentZoom,m_currentZoom,1);
+    setColor(MODE_NORMAL);
+    setStyle(MODE_NORMAL);
     m_fontdata.render_text(buffer,georis::FontData::TJ_LEFT);
     glPopMatrix();
 }
