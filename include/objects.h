@@ -2,6 +2,7 @@
 #include <cmath>
 #include <vector>
 #include <limits>
+#include <cassert>
 #include "georis.h"
 #include "param.h"
 
@@ -165,6 +166,9 @@ struct sketchObj {
     virtual operator AABBr()const = 0;
     virtual ObjectType type()const = 0;
     virtual void move(double dx,double dy) = 0;
+    virtual void setParam(const std::vector<double>& parame) = 0;
+    virtual void getParam(std::vector<double>& parame)const = 0;
+    virtual void getParamInfo(std::vector<paramProxy*>& ppa)const = 0;
 
 };
 struct ptrep:public point2r, public sketchObj {
@@ -185,11 +189,30 @@ struct ptrep:public point2r, public sketchObj {
     virtual operator AABBr()const{
         return AABBr(*(x->pval),*(y->pval),*(x->pval),*(y->pval));
     }
+    virtual void setParam(const std::vector<double>& parame){
+        assert(parame.size() == 2);
+        *(x->pval) = parame[0];
+        *(y->pval) = parame[1];
+    }
+    virtual void getParam(std::vector<double>& parame)const{
+        parame.clear();
+        parame.push_back(*x->pval);
+        parame.push_back(*y->pval);
+    }
+    virtual void getParamInfo(std::vector<paramProxy*>& ppa)const{
+        ppa.clear();
+        ppa.push_back(x);
+        ppa.push_back(y);
+    }
 };
 struct lirep:public sketchObj {
     ptrep *beg;
     ptrep *end;
-    lirep(ptrep *b,ptrep *e):beg(b),end(e) {}
+    ObjectType ty;
+    lirep(ptrep *b,ptrep *e,ObjectType lot):beg(b),end(e),ty(lot){
+        if ( ty == OT_LINE || ty == OT_RAY || ty == OT_SEGMENT ) return;
+        throw std::invalid_argument("lirep: bad line type");
+    }
     operator line2r ()const {
         return line2r(*beg,*end);
     }
@@ -203,25 +226,52 @@ struct lirep:public sketchObj {
         double lpx = _x - *(beg->x->pval);
         double lpy = _y - *(beg->y->pval);
         double lena = std::sqrt(ax*ax+ay*ay);
-        double lproa = (lpx*ax+lpy*ay)/lena;
         double ptl = std::abs(lpx*ay-lpy*ax)/lena;
+        if ( ty == OT_LINE )
+            return ptl;
+
+        double lproa = (lpx*ax+lpy*ay)/lena;
 
         if ( lproa < 0 ) return 2*std::sqrt(lpx*lpx+lpy*lpy);
-        if ( std::abs(lproa) > lena ) return 2*(sqrt(ptl*ptl + (lproa-lena)*(lproa-lena)));
+
+        if ( lproa > lena && ty == OT_SEGMENT ) return 2*(sqrt(ptl*ptl + (lproa-lena)*(lproa-lena)));
 
         return ptl;
     }
-    bool inRect(double xtl,double ytl,double xbr,double ybr)const{
-            return ( xtl<= *(beg->x->pval) && *(beg->x->pval) <= xbr && ybr <= *(beg->y->pval) && *(beg->y->pval) <= ytl &&
-                                     xtl<= *(end->x->pval) && *(end->x->pval) <= xbr && ybr <= *(end->y->pval) && *(end->y->pval) <= ytl );
+    bool inRect(double xmin,double ymin,double xmax,double ymax)const{
+        if ( ty == OT_SEGMENT ) return ( xmin<= *(beg->x->pval) && *(beg->x->pval) <= xmax && ymin <= *(beg->y->pval) && *(beg->y->pval) <= ymax &&
+                                     xmin<= *(end->x->pval) && *(end->x->pval) <= xmax && ymin <= *(end->y->pval) && *(end->y->pval) <= ymax );
+        return false;
     }
 
     virtual ObjectType type()const {
-        return ObjectType::OT_SEGMENT;
+        return ty;
     }
     virtual operator AABBr()const{
         return AABBr(*(beg->x->pval),*(beg->y->pval),*(end->x->pval),*(end->y->pval));
     }
+    virtual void setParam(const std::vector<double>& parame){
+        assert(parame.size() == 4);
+        *beg->x->pval = parame[0];
+        *beg->y->pval = parame[1];
+        *end->x->pval = parame[2];
+        *end->y->pval = parame[3];
+    }
+    virtual void getParam(std::vector<double>& parame)const{
+        parame.clear();
+        parame.push_back(*beg->x->pval);
+        parame.push_back(*beg->y->pval);
+        parame.push_back(*end->x->pval);
+        parame.push_back(*end->y->pval);
+    }
+    virtual void getParamInfo(std::vector<paramProxy*>& ppa)const{
+        ppa.clear();
+        ppa.push_back(beg->x);
+        ppa.push_back(beg->y);
+        ppa.push_back(end->x);
+        ppa.push_back(end->y);
+    }
+
 };
 struct circrep:public sketchObj {
     ptrep *center;
@@ -230,17 +280,35 @@ struct circrep:public sketchObj {
     double dist2point(double _x,double _y) const {
         return std::abs( std::sqrt((*(center->x->pval) -_x)*(*(center->x->pval) -_x) + (*(center->y->pval) -_y)*(*(center->y->pval) -_y) ) - *r->pval);
     }
-    bool inRect(double xtl,double ytl,double xbr,double ybr)const{
-            return ( xtl<= (*(center->x->pval)-*r->pval) && (*(center->x->pval)+*r->pval) <= xbr && ybr <= (*(center->y->pval)-*r->pval) && (*(center->y->pval)+*r->pval) <= ytl );
+    bool inRect(double xmin,double ymin,double xmax,double ymax)const{
+        return ( xmin<= (*(center->x->pval)-*r->pval) && (*(center->x->pval)+*r->pval) <= xmax && ymin <= (*(center->y->pval)-*r->pval) && (*(center->y->pval)+*r->pval) <= ymax );
     }
-            virtual void move(double dx,double dy){
-                    center->move(dx,dy);
-            }
+    virtual void move(double dx,double dy){
+        center->move(dx,dy);
+    }
     virtual ObjectType type()const {
         return ObjectType::OT_CIRCLE;
     }
     virtual operator AABBr()const{
         return AABBr(*(center->x->pval)-*(r->pval),*(center->y->pval)-*(r->pval),*(center->x->pval)+*(r->pval),*(center->y->pval)+*(r->pval));
+    }
+    virtual void setParam(const std::vector<double>& parame){
+        assert(parame.size() == 3);
+        *center->x->pval = parame[0];
+        *center->y->pval = parame[1];
+        *r->pval = parame[2];
+    }
+    virtual void getParam(std::vector<double>& parame)const{
+        parame.clear();
+        parame.push_back(*center->x->pval);
+        parame.push_back(*center->y->pval);
+        parame.push_back(*r->pval);
+    }
+    virtual void getParamInfo(std::vector<paramProxy*>& ppa)const{
+        ppa.clear();
+        ppa.push_back(center->x);
+        ppa.push_back(center->y);
+        ppa.push_back(r);
     }
 
 };
@@ -278,21 +346,21 @@ struct arcrep:public sketchObj {
         }
     }  
 
-    bool inRect(double xtl,double ytl,double xbr,double ybr)const{
+    bool inRect(double xmin,double ymin,double xmax,double ymax)const{
         double dxb = *(beg->x->pval) - *(center->x->pval);
         double dyb = *(beg->y->pval) - *(center->y->pval);
         double r = std::sqrt(dxb*dxb + dyb*dyb);
         // test if arc's circle fully contained in rect
-        if ( xtl <= *(center->x->pval)-r &&
-             *(center->x->pval)+r <= xbr &&
-             *(center->y->pval)+r <= ytl &&
-             ybr <= *(center->y->pval)-r )
+        if ( xmin <= *(center->x->pval)-r &&
+             *(center->x->pval)+r <= xmax &&
+             *(center->y->pval)+r <= ymax &&
+             ymin <= *(center->y->pval)-r )
             return true;
         // test if arc's circle fully out of rect
-        if ( *(center->x->pval)+r < xtl ||
-             xbr < *(center->x->pval)-r ||
-             ytl < *(center->y->pval)-r ||
-             *(center->y->pval)+r  < ybr )
+        if ( *(center->x->pval)+r < xmin ||
+             xmax < *(center->x->pval)-r ||
+             ymax < *(center->y->pval)-r ||
+             *(center->y->pval)+r  < ymin )
             return false;
 
         double top = std::max( *(beg->y->pval),*(end->y->pval) ) ,
@@ -310,7 +378,7 @@ struct arcrep:public sketchObj {
         if ( !std::isinf(dist2point(*(center->x->pval)+r,*(center->y->pval))) )
             right = *(center->x->pval)+r;
 
-        return (xtl <= left && right <= xbr && top <= ytl && ybr <= bottom);
+        return (xmin <= left && right <= xmax && top <= ymax && ymin <= bottom);
     }
     virtual void move(double dx,double dy){
         center->move(dx,dy);
@@ -323,6 +391,33 @@ struct arcrep:public sketchObj {
         double dyb = *(beg->y->pval) - *(center->y->pval);
         double r = std::sqrt(dxb*dxb + dyb*dyb);
         return AABBr(*(center->x->pval)-r,*(center->y->pval)-r,*(center->x->pval)+r,*(center->y->pval)+r);
+    }
+    virtual void setParam(const std::vector<double>& parame){
+        assert(parame.size() == 6);
+        *center->x->pval = parame[0];
+        *center->y->pval = parame[1];
+        *beg->x->pval = parame[2];
+        *beg->y->pval = parame[3];
+        *end->x->pval = parame[4];
+        *end->y->pval = parame[5];
+    }
+    virtual void getParam(std::vector<double>& parame)const{
+        parame.clear();
+        parame.push_back(*center->x->pval);
+        parame.push_back(*center->y->pval);
+        parame.push_back(*beg->x->pval);
+        parame.push_back(*beg->y->pval);
+        parame.push_back(*end->x->pval);
+        parame.push_back(*end->y->pval);
+    }
+    virtual void getParamInfo(std::vector<paramProxy*>& ppa)const{
+        ppa.clear();
+        ppa.push_back(center->x);
+        ppa.push_back(center->y);
+        ppa.push_back(beg->x);
+        ppa.push_back(beg->y);
+        ppa.push_back(end->x);
+        ppa.push_back(end->y);
     }
 
     double angle(){
@@ -347,7 +442,7 @@ struct arcrep:public sketchObj {
                 return a;
 
         }
-    }
+    }    
 };
 
 

@@ -17,12 +17,10 @@ INCLUDEPATH += \
     ../include/fl \
     ../externals/tinyxml2 \
     /usr/include/eigen3 \
-    /usr/include/freetype2 \
-    ../externals/freetype/include
+    /usr/include/freetype2
 
 SOURCES += ../src/test.cpp \
     ../externals/tinyxml2/tinyxml2.cpp \
-    ../externals/freetype/src/freetype.cpp \
    ../src/GeFLTKVisualizer.cpp \
    ../src/GeGlWindow.cpp \
    ../src/GeInfoWindow.cpp \
@@ -91,7 +89,6 @@ HEADERS  += \
     ../include/paramProxy.h \
     ../include/uid.h
 
-#LIBS += -lglut
 LIBS += -lfltk -lfltk_gl -lglut -lfreetype
 
 

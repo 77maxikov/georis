@@ -53,8 +53,6 @@ private:
    GeGlWindow *_glWindow;
    Fl_Toolbar *_toolbar;
    GeInfoWindow *_infowin;
-   Fl_Box *_statusbar;
-
 
    int handle(int event);
    int processKeyboard(int key);

@@ -57,11 +57,13 @@ void georis::Controller::updateView() {
     for (auto &it: m_objs){
         ObjectType objtype;
         std::vector<double> parame;
-        RESCODE res = m_core.queryObjInfo( it.first,objtype,parame );
+        size_t freedeg = 0;
+        RESCODE res = m_core.queryObjInfo( it.first,objtype,parame,freedeg);
         if ( res != RC_OK ){
             MOOLOG << "Controller::updateView no such obj with uid " << it.first << std::endl;
             return;
         }
+        if ( freedeg == 0 ) it.second.status |= MODE_FIXED;
         m_ui->drawObject(objtype,parame,it.second.status);
     }
     for ( auto &c: m_constrs ){
@@ -96,6 +98,12 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
         switch(type) {
         case OT_POINT:
             snprintf(buf,bufsize,"Точка%d",m_lastObjNums[type]);
+            break;
+        case OT_LINE:
+            snprintf(buf,bufsize,"Прямая%d",m_lastObjNums[type]);
+            break;
+        case OT_RAY:
+            snprintf(buf,bufsize,"Луч%d",m_lastObjNums[type]);
             break;
         case OT_SEGMENT:
             snprintf(buf,bufsize,"Отрезок%d",m_lastObjNums[type]);
@@ -148,6 +156,8 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
             addConstraint(CT_COINCIDENT,cobjs);
             break;
         }
+        case OT_LINE:
+        case OT_RAY:
         case OT_SEGMENT:{
             std::vector<UID> cobjs;
             cobjs.push_back(chids[0]);
@@ -176,6 +186,8 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
 
     if ( m_memHighlights[1] != NOUID ){
         switch(type){
+        case OT_LINE:
+        case OT_RAY:
         case OT_SEGMENT:
         case OT_CIRCLE:
         case OT_ARC:{
@@ -289,11 +301,32 @@ RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector
     // Create displayed constraint if needed
     cinf.status = 0;
     switch(type) {
-    case CT_DISTANCE:
+    case CT_DISTANCE:{
         cinf.type = DCT_LINDIM;
         cinf.value = parame;
         cinf.status |= MODE_DIMLINE;
+
+        if ( objects.size() == 2 ){
+            ObjectType ot1;
+            RESCODE res = m_core.getObjType(objects.front(),ot1);
+            if ( res != RC_OK ) return res;
+            ObjectType ot2;
+            res = m_core.getObjType(objects.back(),ot2);
+            if ( res != RC_OK ) return res;
+            if ( OT_POINT == ot1 && ot1 == ot2){
+                cinf.type = DCT_LINDIM;
+
+                linDim* ld = new linDim;
+                ld->idbeg = objects.front();
+                ld->idend = objects.back();
+                ld->dimdx = 0.5;
+                ld->dimdy = 0.1;
+                ld->core = &m_core;
+                cinf.sd.reset(ld);
+            }
+        }
         break;
+    }
     case CT_ANGLE:{
         cinf.type = DCT_ANGLEDIM;
         cinf.value = parame;
@@ -321,46 +354,66 @@ RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector
     case CT_DIMENSION:{
         cinf.value = parame;
         cinf.status |= MODE_DIMLINE;
-
-        ObjectType ot;
-        RESCODE res = m_core.getObjType(objects.front(),ot);
-        if ( res != RC_OK ) return res;
-        switch (ot){
-        case OT_SEGMENT:{
-            cinf.type = DCT_LINDIM;
-            std::vector<UID> objchi;
-            res = m_core.getObjChilds(objects.front(),objchi);
+        if ( objects.size() == 1 ){
+            ObjectType ot;
+            RESCODE res = m_core.getObjType(objects.front(),ot);
             if ( res != RC_OK ) return res;
+            switch (ot){
+            case OT_SEGMENT:{
+                cinf.type = DCT_LINDIM;
+                std::vector<UID> objchi;
+                res = m_core.getObjChilds(objects.front(),objchi);
+                if ( res != RC_OK ) return res;
 
-            linDim* ld = new linDim;
-            ld->idbeg = objchi.front();
-            ld->idend = objchi.back();
-            ld->dimdx = 0.5;
-            ld->dimdy = 0.1;
-            ld->core = &m_core;
-            cinf.sd.reset(ld);
+                linDim* ld = new linDim;
+                ld->idbeg = objchi.front();
+                ld->idend = objchi.back();
+                ld->dimdx = 0.5;
+                ld->dimdy = 0.1;
+                ld->core = &m_core;
+                cinf.sd.reset(ld);
 
-            break;
+                break;
+            }
+            case OT_CIRCLE:{
+                cinf.type = DCT_CIRCDIM;
+                std::vector<UID> objchi;
+                res = m_core.getObjChilds(objects.front(),objchi);
+                if ( res != RC_OK ) return res;
+                std::vector<double> para;
+                res = m_core.getObjParam(objects.front(),para);
+                if ( res != RC_OK ) return res;
+
+                circDim* cdi = new circDim;
+                cdi->idcenter = objchi.front();
+                cdi->dimr = para.back();
+                cdi->dimdir = 45;
+                cdi->offset = 0.7;
+                cdi->core = &m_core;
+                cinf.sd.reset(cdi);
+
+                break;
+            }
+            }
         }
-        case OT_CIRCLE:{
-            cinf.type = DCT_CIRCDIM;
-            std::vector<UID> objchi;
-            res = m_core.getObjChilds(objects.front(),objchi);
+        else if ( objects.size() == 2 ){
+            ObjectType ot1;
+            RESCODE res = m_core.getObjType(objects.front(),ot1);
             if ( res != RC_OK ) return res;
-            std::vector<double> para;
-            res = m_core.getObjParam(objects.front(),para);
+            ObjectType ot2;
+            res = m_core.getObjType(objects.back(),ot2);
             if ( res != RC_OK ) return res;
+            if ( OT_POINT == ot1 && ot1 == ot2){
+                cinf.type = DCT_LINDIM;
 
-            circDim* cdi = new circDim;
-            cdi->idcenter = objchi.front();
-            cdi->dimr = para.back();
-            cdi->dimdir = 45;
-            cdi->offset = 0.7;
-            cdi->core = &m_core;
-            cinf.sd.reset(cdi);
-
-            break;
-        }
+                linDim* ld = new linDim;
+                ld->idbeg = objects.front();
+                ld->idend = objects.back();
+                ld->dimdx = 0.5;
+                ld->dimdy = 0.1;
+                ld->core = &m_core;
+                cinf.sd.reset(ld);
+            }
         }
         break;
     }
@@ -378,10 +431,10 @@ void georis::Controller::resetSelection() {
         if ( it.second.status & MODE_CONSTRAINED )
             it.second.status &= ~MODE_CONSTRAINED;
     }
+    m_selectedObjs.clear();
     showSelectionInfo();
 }
 size_t georis::Controller::selectByPoint(double x,double y,double precision) {
-
     std::vector<UID> nearest;
     std::vector<double> dists;
     m_core.findObjInCirc(x,y,precision,nearest,&dists);
@@ -397,14 +450,25 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
 
         ObjectType ot;
         std::vector<double> parame;
-        m_core.queryObjInfo(nearest[k],ot, parame);
+        size_t freedeg = 0;
+        m_core.queryObjInfo(nearest[k],ot, parame,freedeg);
         sorter[ot][dists[k]] = nearest[k];
 
     }
 
     if ( sorter.find(OT_POINT) != sorter.end() ){
+        if ( m_objs[ (*sorter[OT_POINT].begin()).second ].status & MODE_SELECTED ){ // Exclude selected
+            for ( size_t k = 0;k < m_selectedObjs.size(); ++k ){
+                if ( m_selectedObjs[k] == (*sorter[OT_POINT].begin()).second ){
+                    m_selectedObjs.erase(m_selectedObjs.begin() + k);
+                    break;
+                }
+            }
+        }
+        else{
+            m_selectedObjs.push_back((*sorter[OT_POINT].begin()).second);
+        }
         m_objs[ (*sorter[OT_POINT].begin()).second ].status ^= MODE_SELECTED;
-//        MOOLOG << "Controller::selectByPoint size " << m_objs.size() << std::endl;
         showSelectionInfo();
         return 1;
     }
@@ -423,6 +487,17 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
     m_core.getObjParent(sel,par);
     if ( par != NOUID  &&  (m_objs[par].status & MODE_SELECTED) && (m_objs[sel].status & MODE_SELECTED) ) return 0;
 
+    if ( m_objs[sel].status & MODE_SELECTED ){ // Exclude from selected
+        for ( size_t k = 0;k < m_selectedObjs.size(); ++k ){
+            if ( m_selectedObjs[k] == sel ){
+                m_selectedObjs.erase(m_selectedObjs.begin() + k);
+                break;
+            }
+        }
+    }
+    else {
+        m_selectedObjs.push_back(sel);
+    }
     m_objs[sel].status ^= MODE_SELECTED;
 
     unsigned status = m_objs[sel].status;
@@ -432,9 +507,9 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
     if ( !subs.empty() )
         for ( size_t s = 0 ; s < subs.size();++s )
             m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
+
     showSelectionInfo();
 
-//    MOOLOG << "Controller::selectByPoint L size " << m_objs.size() << std::endl;
     return 1;
 }
 
@@ -545,22 +620,20 @@ void georis::Controller::constrainSelected(ConstraintType type,double parame) {
         resetSelection();
 }
 void georis::Controller::deleteSelected() {
-    std::vector<UID> selected;
-    findObj(MODE_SELECTED, selected);
-    for (size_t k = 0; k < selected.size(); ++k){
+   for (size_t k = 0; k < m_selectedObjs.size(); ++k){
         UID uidpar;
-        m_core.getObjParent(selected[k],uidpar);
+        m_core.getObjParent(m_selectedObjs[k],uidpar);
         if ( uidpar != NOUID ) continue;
         std::vector<UID> subs;
-        m_core.getObjChilds(selected[k],subs);
+        m_core.getObjChilds(m_selectedObjs[k],subs);
         // Prepare to update m_constrs
         std::vector<UID> construids;
-        m_core.getObjConstraints(selected[k],construids);
+        m_core.getObjConstraints(m_selectedObjs[k],construids);
 
-        m_core.removeObject(selected[k]);
+        m_core.removeObject(m_selectedObjs[k]);
         for ( size_t s = 0 ; s < subs.size();++s )
             m_objs.erase(subs[s]);
-        m_objs.erase(selected[k]);
+        m_objs.erase(m_selectedObjs[k]);
 
         for (auto cuid: construids){
             auto cit = m_constrs.find(cuid);
@@ -568,7 +641,7 @@ void georis::Controller::deleteSelected() {
         }
 
     }
-
+    m_selectedObjs.clear();
 
     showSelectionInfo();
 }
@@ -580,11 +653,49 @@ void georis::Controller::findObj(unsigned stateMask,std::vector<UID> &res){
 }
 
 void georis::Controller::moveSelected(double dx,double dy) {
-    std::vector<UID> selected;
-    findObj(MODE_SELECTED,selected);
-    if ( !selected.empty() )
-        m_core.moveObjects(selected,dx,dy);
+    if ( !m_selectedObjs.empty() ){
+        if ( m_selectedObjs.size() == 1 ){
+            ObjectType ot = OT_NONE;
+            std::vector<double> parame;
+            size_t fd = 0;
+            m_core.queryObjInfo(m_selectedObjs.front(),ot,parame,fd );
+            if ( ot == OT_CIRCLE ){
+                // Project displacement onto readius vector to determine radius change
+                double rvx = m_xSel - parame[0];
+                double rvy = m_ySel - parame[1];
+                double dr = (dx*rvx + dy*rvy)/parame[2];
+                parame[2] += dr;
+                m_core.setObjParam(m_selectedObjs.front() ,parame );
+            }
+
+        }
+        else
+            m_core.moveObjects(m_selectedObjs,dx,dy);
+    }
 }
+void georis::Controller::processDrag(double x, double y) {
+
+    if ( !m_selectedObjs.empty() ){
+        if ( m_selectedObjs.size() == 1 ){
+            ObjectType ot = OT_NONE;
+            std::vector<double> parame;
+            size_t fd = 0;
+            m_core.queryObjInfo(m_selectedObjs.front(),ot,parame,fd );
+            if ( ot == OT_CIRCLE ){
+                double rvx = x - parame[0];
+                double rvy = y - parame[1];
+                parame[2] = sqrt(rvx*rvx + rvy*rvy);
+                m_core.setObjParam(m_selectedObjs.front() ,parame );
+                return;
+            }
+            m_core.moveObjects(m_selectedObjs,x - m_xPrev,y - m_yPrev);
+        }
+        else
+            m_core.moveObjects(m_selectedObjs,x - m_xPrev,y - m_yPrev);
+    }
+    m_xPrev = x; m_yPrev = y;
+}
+
 void georis::Controller::toggleAuxSelected(){
     std::vector<UID> selected;
     findObj(MODE_SELECTED,selected);
@@ -597,48 +708,33 @@ void georis::Controller::showSelectionInfo() {
     if ( m_ui == nullptr ) return;
     // Collect selected objects info
 
-    std::vector<UID> selected;
-    findObj(MODE_SELECTED,selected);
-
     std::vector<std::pair<UID,std::string> > objsSel;
     std::vector<ConstraintType>  constrsAvail;
     std::vector<std::pair<UID,std::string>> constrsSel;
 
-    if ( !selected.empty() ) {
+    if ( !m_selectedObjs.empty() ){
+        std::vector<UID> selected(m_selectedObjs);
         m_core.filterChildObj(selected);
         objsSel.reserve(selected.size());
-        int nselPoints = 0, nselLines = 0, nselCircls = 0, nselArcs = 0;
+        std::map<ObjectType,size_t> nSel;
+        size_t totalfree = 0;
         for (auto it : selected){
             ObjectType ot;
-            m_core.getObjType(it,ot);
-            switch ( ot ){
-            case OT_POINT:
-                ++nselPoints;
-                break;
-            case OT_SEGMENT:
-                ++nselLines;
-                break;
-            case OT_CIRCLE:
-                ++nselCircls;
-                break;
-            case OT_ARC:
-                ++nselArcs;
-                break;
-            case OT_SPLINE:
-            case OT_NONE:
-                ;
-
-            }
+            std::vector<double> parame;
+            size_t fd = 0;
+            m_core.queryObjInfo(it,ot,parame,fd);
+            totalfree += fd?1:0;
+            ++nSel[ot];
             objsSel.push_back( std::make_pair(it,m_objs[it].name) );
         }
 
         MOOLOG << "Controller::showSelectionInfo: " << m_objs.size() << " total objects, selected "<< selected.size() << std::endl;
-        MOOLOG << "  nPoints = "<< nselPoints << std::endl;
-        MOOLOG << "  nLines = " << nselLines << std::endl;
-        MOOLOG << "  nCircls = " << nselCircls << std::endl;
-        MOOLOG << "  nArcs = " <<nselArcs << std::endl;
-
-
+        MOOLOG << "  nPoints = "<< nSel[OT_POINT] << std::endl;
+        MOOLOG << "  nLines = " << nSel[OT_LINE] << std::endl;
+        MOOLOG << "  nRays = " << nSel[OT_RAY] << std::endl;
+        MOOLOG << "  nSegs = " << nSel[OT_SEGMENT] << std::endl;
+        MOOLOG << "  nCircls = " << nSel[OT_CIRCLE] << std::endl;
+        MOOLOG << "  nArcs = " << nSel[OT_ARC] << std::endl;
 
         // Collect common constrains for selected objects
         std::vector<UID> commonSelConstrs;
@@ -663,28 +759,40 @@ void georis::Controller::showSelectionInfo() {
 
         // Show available constraints
 
-        if ( nselPoints || nselLines || nselCircls || nselArcs) {
-            constrsAvail.push_back(CT_FIX);
-            if ( nselPoints > 1 && nselLines == 0  && nselCircls == 0 && nselArcs == 0) // Only points selected
+        if ( totalfree != 0 ) {
+            if ( totalfree == selected.size() ) constrsAvail.push_back(CT_FIX);
+
+            if ( m_selectedObjs.size() > 1 && m_selectedObjs.size() == nSel[OT_POINT] ) // Only points selected
                 constrsAvail.push_back(CT_COINCIDENT);
 
-            if ( nselPoints == 0 && nselLines > 0 && nselCircls == 0 && nselArcs == 0) { // Only lines are selected
+            if ( nSel[OT_POINT] == 0 &&
+                 (nSel[OT_LINE] || nSel[OT_RAY] || nSel[OT_SEGMENT]) &&
+                 nSel[OT_CIRCLE] == 0 &&
+                 nSel[OT_ARC] == 0) {
                 constrsAvail.push_back(CT_VERTICAL);
                 constrsAvail.push_back(CT_HORIZONTAL);
-                if ( nselLines == 1)
-                    constrsAvail.push_back(CT_DIMENSION);
-                else {
+                if ( nSel[OT_LINE] ==0 && nSel[OT_RAY] ==0 ){
+                    if ( nSel[OT_SEGMENT] == 1)
+                        constrsAvail.push_back(CT_DIMENSION);
+                    else
+                        constrsAvail.push_back(CT_EQUAL);
+                }
+                if ( (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_SEGMENT]) > 1 ){
                     constrsAvail.push_back(CT_PARALLEL);
                     constrsAvail.push_back(CT_COLLINEAR);
-                    constrsAvail.push_back(CT_EQUAL);
-                    if ( nselLines == 2 ){
-                        constrsAvail.push_back(CT_ANGLE);
-                        constrsAvail.push_back(CT_ORTHO);
-                    }
+                }
+                if ( (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_SEGMENT]) == 2 ){
+                    constrsAvail.push_back(CT_ANGLE);
+                    constrsAvail.push_back(CT_ORTHO);
                 }
             }
-            if ( nselPoints == 0 && nselLines == 0 && (nselCircls || nselArcs)) { // Only circles selected
-                if ( (nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1) )
+
+            if ( nSel[OT_POINT] == 0 &&
+                 nSel[OT_LINE] == 0 &&
+                 nSel[OT_RAY] == 0 &&
+                 nSel[OT_SEGMENT] == 0 &&
+                 (nSel[OT_CIRCLE] || nSel[OT_ARC])) { // Only circles selected
+                if ( (nSel[OT_CIRCLE] ==1 && nSel[OT_ARC] == 0) || (nSel[OT_CIRCLE]==0 && nSel[OT_ARC] == 1) )
                     constrsAvail.push_back(CT_DIMENSION);
                 else{
                     constrsAvail.push_back(CT_EQUAL);
@@ -692,34 +800,36 @@ void georis::Controller::showSelectionInfo() {
                     constrsAvail.push_back(CT_TANGENT);
                 }
             }
-            if ( nselPoints == 1 ){
-                if ( nselLines == 1 && nselCircls == 0 && nselArcs == 0){
+            if ( nSel[OT_POINT] == 1 ){
+                if ( (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_SEGMENT] + nSel[OT_CIRCLE] + nSel[OT_ARC]) == 1)
                     constrsAvail.push_back(CT_COINCIDENT);
+                if ( nSel[OT_SEGMENT] == 1 && (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_CIRCLE] + nSel[OT_ARC]) == 0 )
                     constrsAvail.push_back(CT_MIDPOINT);
-                }
-                if ( ((nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1)) && nselLines == 0) {
-                    constrsAvail.push_back(CT_COINCIDENT);
-                }
             }
-            if ( nselPoints == 2 && nselLines == 1 && nselCircls == 0 && nselArcs == 0 )
-                constrsAvail.push_back(CT_SYMMETRIC);
-            if ( nselPoints == 0 && nselLines == 1 && ((nselCircls == 1 && nselArcs == 0) || (nselCircls == 0 && nselArcs == 1)) )
-                constrsAvail.push_back(CT_TANGENT);
-
+            if ( nSel[OT_POINT] == 2 && (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_SEGMENT] + nSel[OT_CIRCLE] + nSel[OT_ARC]) ==  0 )
+                constrsAvail.push_back(CT_DIMENSION);
+            if ( (nSel[OT_LINE] + nSel[OT_RAY] + nSel[OT_SEGMENT]) == 1 ){
+                if ( nSel[OT_POINT] == 2 && (nSel[OT_CIRCLE] + nSel[OT_ARC]) == 0 )
+                    constrsAvail.push_back(CT_SYMMETRIC);
+                if ( nSel[OT_POINT] == 0 && (nSel[OT_CIRCLE] + nSel[OT_ARC]) == 1 )
+                    constrsAvail.push_back(CT_TANGENT);
+            }
         }
     }
     m_ui->setSelectionInfo(objsSel,constrsSel,constrsAvail);
 
 }
-void georis::Controller::memHighlightsDown(){
+void georis::Controller::memHighlightsDown(double x,double y){
     m_memHighlights[0] = NOUID;
+    m_xSel = x; m_ySel = y;
+    m_xPrev = x; m_yPrev = y;
     std::vector<UID> highlighted;
     findObj(MODE_HIGHLIGHTED,highlighted);
     if ( !highlighted.empty() )
         m_memHighlights[0] = highlighted[0];
 //    MOOLOG << "Controller::memHighlightsDown " << m_memHighlights[0] << std::endl;
 }
-void georis::Controller::memHighlightsUp(){
+void georis::Controller::memHighlightsUp(double x,double y){
     m_memHighlights[1] = NOUID;
     std::vector<UID> highlighted;
     findObj(MODE_HIGHLIGHTED,highlighted);
@@ -768,8 +878,9 @@ void georis::Controller::saveTo(const std::string &fname){
         m_core.getObjChilds(uid,chuids);
         ObjectType ot;
         std::vector<double> parame;
+        size_t freedeg = 0;
         for (auto chuid:chuids){
-            res = m_core.queryObjInfo(chuid,ot,parame);
+            res = m_core.queryObjInfo(chuid,ot,parame,freedeg);
             if ( res != RC_OK ){
                 MOOLOG << "Controller::saveTo: no obj uid " << chuid << std::endl;
                 return;
@@ -780,7 +891,7 @@ void georis::Controller::saveTo(const std::string &fname){
                 return;
             }
         }
-        res = m_core.queryObjInfo(uid,ot,parame);
+        res = m_core.queryObjInfo(uid,ot,parame,freedeg);
         if ( res != RC_OK ){
             MOOLOG << "Controller::saveTo: no obj uid " << uid << std::endl;
             return;

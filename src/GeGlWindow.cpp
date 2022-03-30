@@ -11,7 +11,6 @@
 #include "georis.h"
 #include "common_math.h"
 
-
 #include "mooLog.h"
 
 GeGlWindow::GeGlWindow(int x,int y, int w,int h,const char *name):Fl_Gl_Window(x,y,w,h,name) {
@@ -27,11 +26,8 @@ GeGlWindow::GeGlWindow(int x,int y, int w,int h,const char *name):Fl_Gl_Window(x
     m_input_mode = georis::IM_NONE;
     m_state = 0;
     m_controller = nullptr;
-    m_statusbar = nullptr;
 
     m_fontdata.init("//usr//share//fonts//TTF//DejaVuSans.ttf", 14);
-
-
 }
 
 void GeGlWindow::resize(int x,int y, int ww,int hh){
@@ -50,11 +46,6 @@ int GeGlWindow::handle(int event){
         //MOOLOG << "GeGlWindow::handle Mouse Pushed x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
         if (Fl::event_clicks() > 0) {
             MOOLOG << "GeGlWindow::handle Mouse double click Pushed x = " << Fl::event_x() << " y = " << Fl::event_y() << std::endl;
-
-            // Two Choices: Either run your code directly here, like this...
-            //printf("Double Click at (%d, %d)\n", coords[0], coords[1]);
-            //fflush(stdout);
-
         }
         else{
             processMouse(Fl::event_button(),FL_PUSH,Fl::event_x(),Fl::event_y());
@@ -77,9 +68,10 @@ int GeGlWindow::handle(int event){
     return Fl_Gl_Window::handle(event);
 }
 void GeGlWindow::processMouse(int button, int state, int x, int y) {
-    //MOOLOG << "GeGlWindow::processMouse called x " << x << " y " << y<< std::endl;
     double xCur,yCur;
     win2int(x,y,xCur,yCur);
+
+    MOOLOG << "GeGlWindow::processMouse called xCur " << xCur << " yCur " << yCur << std::endl;
 
     //MOOLOG << "GeGlWindow::processMouse button = " << button << ", state = " << state << std::endl;
     switch (button) {
@@ -87,9 +79,11 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
         switch (state) {
         case FL_PUSH:
             if (m_controller)
-                m_controller->memHighlightsDown();
+                m_controller->memHighlightsDown(xCur,yCur);
 
             switch(m_input_mode) {
+            case georis::IM_LINE:
+            case georis::IM_RAY:
             case georis::IM_SEGMENT:
             case georis::IM_CIRCLE:
             case georis::IM_RECT:
@@ -121,7 +115,7 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
             break;
         case FL_RELEASE:
             if ( m_input_mode != georis::IM_NONE && m_controller )
-                if (m_controller) m_controller->memHighlightsUp();
+                if (m_controller) m_controller->memHighlightsUp(xCur,yCur);
 
             switch (m_input_mode) {
             case georis::IM_POINT:
@@ -130,15 +124,29 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                     //LOG << "GeGlWindow::processMouse added point, uid = " << uid << std::endl;
                 }
                 break;
+            case georis::IM_LINE:
+                if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
+                    if (m_controller) {
+                        m_controller->addObject(georis::OT_LINE,{m_coo[2],m_coo[3],xCur,yCur});
+                        //LOG << "GeGlWindow::processMouse added line, uid = " << uid << std::endl;
+                    }
+                m_state = 0;
+                break;
+            case georis::IM_RAY:
+                if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
+                    if (m_controller) {
+                        m_controller->addObject(georis::OT_RAY,{m_coo[2],m_coo[3],xCur,yCur});
+                        //LOG << "GeGlWindow::processMouse added ray, uid = " << uid << std::endl;
+                    }
+                m_state = 0;
+                break;
             case georis::IM_SEGMENT:
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
                     if (m_controller) {
                         m_controller->addObject(georis::OT_SEGMENT,{m_coo[2],m_coo[3],xCur,yCur});
-                        //LOG << "GeGlWindow::processMouse added line, uid = " << uid << std::endl;
+                        //LOG << "GeGlWindow::processMouse added segment, uid = " << uid << std::endl;
                     }
                 m_state = 0;
-                //m_coo[2] = m_coo[0];
-                //m_coo[3] = m_coo[1];
                 break;
             case georis::IM_CIRCLE:{
                 double r  = sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur));
@@ -212,19 +220,29 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
     redraw();
 }
 void GeGlWindow::processDrag(int x,int y){
-    //MOOLOG << "GeGlWindow::processDrag called" << std::endl;
     double xCur,yCur;
     win2int(x,y,xCur,yCur);
+    MOOLOG << "GeGlWindow::processDrag called xCur "<< xCur << " yCur " << yCur << std::endl;
+
     if ( m_controller ) {
         m_controller->highlightObj(xCur,yCur,3*minPixelRes());
-        m_controller->moveSelected((xCur - m_coo[0]),(yCur - m_coo[1]));
+        //m_controller->moveSelected((xCur - m_coo[0]),(yCur - m_coo[1]));
+        m_controller->processDrag(xCur,yCur);
+
     }
-    // Update current pos
-    m_coo[0] = xCur;
-    m_coo[1] = yCur;
+    updateCurrentPos(xCur,yCur);
     redraw();
 }
-
+void GeGlWindow::updateCurrentPos(double xCur, double yCur){
+    m_coo[0] = xCur;
+    m_coo[1] = yCur;/*
+    if ( m_statusbar != nullptr ){
+        char buffer[64];
+        snprintf(buffer,sizeof(buffer),"%6.3f, %6.3f",xCur,yCur);
+        m_statusbar->copy_label(buffer);
+    }
+    */
+}
 void GeGlWindow::processMove(int x,int y){
     //MOOLOG << "GeGlWindow::processMove x "<< x << " y "<< y << std::endl;
     double xCur,yCur;
@@ -232,16 +250,7 @@ void GeGlWindow::processMove(int x,int y){
     if ( m_controller ) {
         m_controller->highlightObj(xCur,yCur,3*minPixelRes());
     }
-    // Update current pos
-    m_coo[0] = xCur;
-    m_coo[1] = yCur;
-
-    char buffer[64];
-    snprintf(buffer,sizeof(buffer),"%6.3f, %6.3f",xCur,yCur);
-
-    if ( m_statusbar != nullptr )
-        m_statusbar->copy_label(buffer);
-
+    updateCurrentPos(xCur,yCur);
     redraw();
 }
 
@@ -272,12 +281,88 @@ void GeGlWindow::drawPoint(double x,double y,unsigned status) {
     glEnd();
     glDisable(GL_POINT_SMOOTH);
 }
-void GeGlWindow::drawLine(double x1, double y1, double x2, double y2,unsigned status ) {
+void GeGlWindow::drawSegment(double x1, double y1, double x2, double y2,unsigned status ) {
     setColor(status);
     setStyle(status);
     glBegin(GL_LINES);
     glVertex2d(x1,y1);
     glVertex2d(x2,y2);
+    glEnd();
+}
+void GeGlWindow::drawRay(double x1, double y1, double x2, double y2,unsigned status ) {
+    setColor(status);
+    setStyle(status);
+    georis::AABBr scree = getScreenBox();
+    double x2_ = x2, y2_ = y2;
+    if ( scree.contains({x2,y2}) ){
+        if ( x1 < x2 ){
+            // find intersection with right border
+            x2_ = scree.TR.x;
+            y2_ = y1 + (y2-y1)*(x2_ - x1)/(x2-x1);
+        }
+        else if ( x2 < x1 ){
+            // find intersection with left border
+            x2_ = scree.BL.x;
+            y2_ = y1 + (y2-y1)*(x2_ - x1)/(x2-x1);
+        }
+        else{
+            if ( y1 < y2 )
+                y2_ = scree.TR.y;
+            else if ( y2 < y1 )
+                y2_ = scree.BL.y;
+        }
+    }
+    glBegin(GL_LINES);
+    glVertex2d(x1,y1);
+    glVertex2d(x2_,y2_);
+    glEnd();
+
+}
+void GeGlWindow::drawLine(double x1, double y1, double x2, double y2,unsigned status ) {
+    setColor(status);
+    setStyle(status);
+    georis::AABBr scree = getScreenBox();
+    double x1_ = x1, y1_ = y1, x2_ = x2, y2_ = y2;
+
+    if ( scree.contains({x1,y1}) ){
+        if ( x1 < x2 ){
+            // find intersection with right border
+            x1_ = scree.BL.x;
+            y1_ = y1 + (y2-y1)*(x1_ - x1)/(x2-x1);
+        }
+        else if ( x2 < x1 ){
+            // find intersection with right border
+            x1_ = scree.TR.x;
+            y1_ = y1 + (y2-y1)*(x1_ - x1)/(x2-x1);
+        }
+        else{
+            if ( y1 < y2 )
+                y1_ = scree.BL.y;
+            else if ( y2 < y1 )
+                y1_ = scree.TR.y;
+        }
+    }
+    if ( scree.contains({x2,y2}) ){
+        if ( x1 < x2 ){
+            // find intersection with right border
+            x2_ = scree.TR.x;
+            y2_ = y1 + (y2-y1)*(x2_ - x1)/(x2-x1);
+        }
+        else if ( x2 < x1 ){
+            // find intersection with left border
+            x2_ = scree.BL.x;
+            y2_ = y1 + (y2-y1)*(x2_ - x1)/(x2-x1);
+        }
+        else{
+            if ( y1 < y2 )
+                y2_ = scree.TR.y;
+            else if ( y2 < y1 )
+                y2_ = scree.BL.y;
+        }
+    }
+    glBegin(GL_LINES);
+    glVertex2d(x1_,y1_);
+    glVertex2d(x2_,y2_);
     glEnd();
 }
 ///
@@ -497,7 +582,8 @@ void GeGlWindow::setColor(unsigned status) {
         glColor3f( 0, 1.0, 0 );
         return;
     }
-    glColor3f( 0, 0, 1 );
+    //glColor3f( 0, 0, 1 );
+    glColor3ub(0x19,0x68,0xc7);
 }
 void GeGlWindow::setStyle(unsigned status) {
     glEnable(GL_LINE_SMOOTH);
@@ -604,13 +690,19 @@ void GeGlWindow::showMode(){
     if (m_state) {
         switch (m_input_mode) {
         case georis::IM_SEGMENT:
+            drawSegment(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_NORMAL);
+            break;
+        case georis::IM_RAY:
+            drawRay(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_NORMAL);
+            break;
+        case georis::IM_LINE:
             drawLine(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_NORMAL);
             break;
         case georis::IM_RECT:
-            drawLine(m_coo[0],m_coo[1],m_coo[0],m_coo[3],MODE_NORMAL);
-            drawLine(m_coo[0],m_coo[1],m_coo[2],m_coo[1],MODE_NORMAL);
-            drawLine(m_coo[2],m_coo[3],m_coo[2],m_coo[1],MODE_NORMAL);
-            drawLine(m_coo[2],m_coo[3],m_coo[0],m_coo[3],MODE_NORMAL);
+            drawSegment(m_coo[0],m_coo[1],m_coo[0],m_coo[3],MODE_NORMAL);
+            drawSegment(m_coo[0],m_coo[1],m_coo[2],m_coo[1],MODE_NORMAL);
+            drawSegment(m_coo[2],m_coo[3],m_coo[2],m_coo[1],MODE_NORMAL);
+            drawSegment(m_coo[2],m_coo[3],m_coo[0],m_coo[3],MODE_NORMAL);
             break;
         case georis::IM_CIRCLE:
             m_coo[6] = sqrt((m_coo[2] - m_coo[0])*(m_coo[2] - m_coo[0]) + (m_coo[3] - m_coo[1])*(m_coo[3] - m_coo[1]));
@@ -619,7 +711,7 @@ void GeGlWindow::showMode(){
         case georis::IM_ARC:{
             switch (m_state){
             case 1:
-                drawLine(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_CONSTRUCTI);
+                drawSegment(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_CONSTRUCTI);
                 m_coo[6] = sqrt((m_coo[2] - m_coo[0])*(m_coo[2] - m_coo[0]) + (m_coo[3] - m_coo[1])*(m_coo[3] - m_coo[1]));
                 drawCircle(m_coo[2],m_coo[3],m_coo[6],MODE_CONSTRUCTI);
                 break;
@@ -662,20 +754,28 @@ MOOLOG << "==================================================================" <
                         drawArc(m_coo[2],m_coo[3], m_coo[0],m_coo[1], m_coo[4],m_coo[5], MODE_CONSTRUCTI);
 
 
-                    drawLine(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_CONSTRUCTI);
-                    //drawLine(m_coo[2],m_coo[3],m_coo[4],m_coo[5],MODE_CONSTRUCTI);
-                    drawLine(m_coo[2],m_coo[3],m_coo[4],m_coo[5],MODE_NORMAL);
+                    drawSegment(m_coo[2],m_coo[3],m_coo[0],m_coo[1],MODE_CONSTRUCTI);
+                    //drawSegment(m_coo[2],m_coo[3],m_coo[4],m_coo[5],MODE_CONSTRUCTI);
+                    drawSegment(m_coo[2],m_coo[3],m_coo[4],m_coo[5],MODE_NORMAL);
                 }
             }
             }
             break;
         }
         case georis::IM_NONE:{
-            drawLine(m_coo[0],m_coo[1],m_coo[0],m_coo[3],MODE_CONSTRUCTI);
-            drawLine(m_coo[0],m_coo[1],m_coo[2],m_coo[1],MODE_CONSTRUCTI);
-            drawLine(m_coo[2],m_coo[3],m_coo[2],m_coo[1],MODE_CONSTRUCTI);
-            drawLine(m_coo[2],m_coo[3],m_coo[0],m_coo[3],MODE_CONSTRUCTI);
+            drawSegment(m_coo[0],m_coo[1],m_coo[0],m_coo[3],MODE_CONSTRUCTI);
+            drawSegment(m_coo[0],m_coo[1],m_coo[2],m_coo[1],MODE_CONSTRUCTI);
+            drawSegment(m_coo[2],m_coo[3],m_coo[2],m_coo[1],MODE_CONSTRUCTI);
+            drawSegment(m_coo[2],m_coo[3],m_coo[0],m_coo[3],MODE_CONSTRUCTI);
         }
         }
     }
+}
+georis::AABBr GeGlWindow::getScreenBox()const{
+    georis::AABBr r;
+    r.BL.x = m_left;
+    r.BL.y = m_bottom;
+    r.TR.x = m_right;
+    r.TR.y = m_top;
+    return r;
 }

@@ -30,7 +30,7 @@ public:
 
     RESCODE getObjType(UID,ObjectType &ot)const;
     RESCODE getObjParam(UID, std::vector<double>&param) const;
-    RESCODE queryObjInfo(UID,ObjectType &ot,std::vector<double>&param)const;
+    RESCODE queryObjInfo(UID,ObjectType &ot,std::vector<double>&param, size_t& freedeg)const;
     RESCODE setObjParam(UID, const std::vector<double>&param);
     RESCODE getObjParent(UID uid,UID& )const;
     RESCODE getObjChilds(UID uid,std::vector<UID>&)const;
@@ -97,6 +97,7 @@ private:
     struct constrGroup{
         std::map<UID, constrInfo> constraints;
         bool unsolved;
+        std::set<paramProxy*> constants;
 
         constrGroup():unsolved(true){}
         std::vector<paramProxy*> getAllParams()const;

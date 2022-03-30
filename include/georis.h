@@ -7,6 +7,7 @@ enum InputMode{
     IM_POINT,
     IM_SEGMENT,
     IM_LINE,
+    IM_RAY,
     IM_CIRCLE,
     IM_ARC,
     IM_RECT
@@ -48,7 +49,7 @@ enum ConstraintType{
 };
 enum ErrorType{
     ET_EQ_PARAM = 0,
-    ET_EQ_CONST,
+    ET_CONST,
     ET_EQ_SS_LEN,
     ET_DIST_P2P,
     ET_DIST_P2L,

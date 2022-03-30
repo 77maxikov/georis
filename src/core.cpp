@@ -62,7 +62,9 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
             internalAddPoint(parame[0],parame[1]);
         break;
     }
-    case OT_SEGMENT: {
+    case OT_LINE:
+    case OT_RAY:
+    case OT_SEGMENT:{
         if ( puid != nullptr && *puid != NOUID ) {
             if ( pchuids == nullptr || pchuids->size() != 2) return RC_INVALIDARG;
             // validate if children are points
@@ -74,7 +76,7 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
             if ( (*ptit1).second.obj->type() != OT_POINT ) return RC_INVALIDARG;
 
             objInfo info;
-            info.obj = new lirep( dynamic_cast<ptrep*>( (*ptit0).second.obj ), dynamic_cast<ptrep*>( (*ptit1).second.obj ));
+            info.obj = new lirep( dynamic_cast<ptrep*>( (*ptit0).second.obj ), dynamic_cast<ptrep*>( (*ptit1).second.obj ),type);
             info.objChilds[0] = (*pchuids)[0];
             info.objChilds[1] = (*pchuids)[1];
             m_objects[*puid] = info;
@@ -87,7 +89,7 @@ RESCODE georis::Core::addObject(georis::ObjectType type, const std::vector<doubl
             UID uidp2 = internalAddPoint(parame[2],parame[3],&pt2);
             UID uid = UIDGen::instance()->generate();
             objInfo info;
-            info.obj = new lirep(pt1,pt2);
+            info.obj = new lirep(pt1,pt2,type);
             info.objChilds[0] = uidp1;
             info.objChilds[1] = uidp2;
             m_objects[uid] = info;
@@ -292,6 +294,8 @@ RESCODE georis::Core::removeObject(UID remUID) {
         m_objects.erase(objit);
         break;
     }
+    case OT_LINE:
+    case OT_RAY:
     case OT_SEGMENT: {
         // Remove constraints
         auto constrs = (*objit).second.constrs;
@@ -334,67 +338,57 @@ RESCODE georis::Core::removeObject(UID remUID) {
 }
 
 RESCODE georis::Core::getObjType(UID uid,ObjectType &ot)const {
-    std::vector<double> paramProxy;
-    return queryObjInfo(uid,ot,paramProxy);
+    std::vector<double> parame;
+    size_t freedeg = 0;
+    return queryObjInfo(uid,ot,parame,freedeg);
 }
 
 RESCODE georis::Core::getObjParam(UID uid,std::vector<double>&parame)const {
     ObjectType ot;
-    return queryObjInfo(uid,ot,parame);
+    size_t freedeg = 0;
+    return queryObjInfo(uid,ot,parame,freedeg);
 }
+RESCODE georis::Core::setObjParam(UID uid,const std::vector<double>&parame ){
+    auto it = m_objects.find(uid);
+    if ( it == m_objects.end() ) return RC_NO_OBJ;
+    if ( (*it).second.obj->fixed ) return RC_OK;
 
-RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&parame)const {
+    backupState();
+    (*it).second.obj->setParam(parame);
+    int res = solve();
+    if ( 0 == res ) return res;
+    MOOLOG << "Core::setObjParam infeasible, restoring " << std::endl;
+    restoreState();
+
+    return RC_OK;
+}
+RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&parame,size_t &freedeg)const {
     auto objit = m_objects.find(uid);
     if ( objit == m_objects.end() ) return RC_NO_OBJ;
 
     ot = (*objit).second.obj->type();
-    //info.status = (*objit).second.obj->fixed;
-    parame.clear();
-    switch ( ot ){
-    case OT_POINT:
-    {
-        parame.reserve(2);
-        ptrep *pt = dynamic_cast<ptrep*>((*objit).second.obj);
-        parame.push_back(*pt->x->pval);
-        parame.push_back(*pt->y->pval);
-        break;
-    }
-    case OT_SEGMENT:
-    {
-        parame.reserve(4);
-        lirep *li = dynamic_cast<lirep*>((*objit).second.obj);
-        parame.push_back(*li->beg->x->pval);
-        parame.push_back(*li->beg->y->pval);
-        parame.push_back(*li->end->x->pval);
-        parame.push_back(*li->end->y->pval);
-        break;
-    }
-    case OT_CIRCLE:
-    {
-        parame.reserve(3);
-        circrep *ci = dynamic_cast<circrep*>((*objit).second.obj);
-        parame.push_back(*ci->center->x->pval);
-        parame.push_back(*ci->center->y->pval);
-        parame.push_back(*ci->r->pval);
-        break;
-    }
-    case OT_ARC:{
-        parame.reserve(5);
-        arcrep *arc = dynamic_cast<arcrep*>((*objit).second.obj);
-        parame.push_back(*arc->center->x->pval);
-        parame.push_back(*arc->center->y->pval);
-        parame.push_back(*arc->beg->x->pval);
-        parame.push_back(*arc->beg->y->pval);
-        parame.push_back(*arc->end->x->pval);
-        parame.push_back(*arc->end->y->pval);
-
-        break;
-    }
-    case OT_SPLINE:
-    case OT_NONE:
-    default:
-        ;
-
+    (*objit).second.obj->getParam(parame);
+    if ( (*objit).second.obj->fixed )
+        freedeg = 0;
+    else{
+        switch (ot){
+        case OT_POINT:
+            freedeg = 2;
+            break;
+        case OT_LINE:
+        case OT_RAY:
+        case OT_SEGMENT:
+            freedeg = 4;
+            break;
+        case OT_CIRCLE:
+            freedeg = 3;
+            break;
+        case OT_ARC:
+            freedeg = 5;
+        case OT_SPLINE:
+        case OT_NONE:
+            freedeg = 0;
+        }
     }
     return RC_OK;
 }
@@ -413,6 +407,8 @@ RESCODE georis::Core::getObjChilds(UID uid,std::vector<UID>&uids)const {
 
     const size_t *start = (*objit).second.objChilds;
     switch ( (*objit).second.obj->type() ){
+    case OT_LINE:
+    case OT_RAY:
     case OT_SEGMENT:
         uids = std::vector<UID>(start,start+2);
         break;
@@ -520,10 +516,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             if ( objiter == m_objects.end() )
                 return RC_INVALIDARG;
 
-            // find constrgroup of current object
+            // find constrgroup of current object or its parent
             UID uidpar = NOUID;
             getObjParent(objuid,uidpar);
-
             int ng = 0;
             if ( uidpar != NOUID ) ng = findConstrGroupByObjID(uidpar);
             else ng = findConstrGroupByObjID(objuid);
@@ -538,6 +533,10 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                 else
                     construid = UIDGen::instance()->generate();
                 constrInfo cinfo(type,{},{}, {objuid} );// CT_FIX
+                // Collect parameters to fix
+                std::vector<paramProxy*> ppar;
+                m_objects[objuid].obj->getParamInfo(ppar);
+
 
                 //add all children of current obj
                 size_t c = 0;
@@ -546,13 +545,16 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                     // fix subObj
                     m_objects[(*objiter).second.objChilds[c++]].obj->fixed = true;
                 }
-                // fix
+                // fix obj
                 (*objiter).second.constrs.push_back(construid);
                 (*objiter).second.obj->fixed = true;
                 added = true;
 
                 m_constrGroups.push_back(constrGroup());
                 m_constrGroups.back().constraints[construid] = cinfo;
+                for ( auto pp: ppar )
+                    m_constrGroups.back().constants.insert(pp);
+
                 m_constrGroups.back().unsolved = false;
             }else{
                 // if constrgroup found, check if there is a FIXED constraint in it
@@ -586,6 +588,10 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                             // fix
                             (*objiter).second.constrs.push_back(constr.first);
                             (*objiter).second.obj->fixed = true;
+                            std::vector<paramProxy*> ppa;
+                            (*objiter).second.obj->getParamInfo(ppa);
+                            for ( auto pp: ppa )
+                                m_constrGroups[ng].constants.insert(pp);
                             added = true;
                         }
                         break;
@@ -614,6 +620,11 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
                     // fix
                     (*objiter).second.constrs.push_back(construid);
                     (*objiter).second.obj->fixed = true;
+
+                    std::vector<paramProxy*> ppa;
+                    (*objiter).second.obj->getParamInfo(ppa);
+                    for ( auto pp: ppa )
+                        m_constrGroups[ng].constants.insert(pp);
                     added = true;
                 }
             }
@@ -649,7 +660,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_VERTICAL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
+        if ( uids.size() == (grouped[OT_LINE].size()+
+                             grouped[OT_RAY].size()+
+                             grouped[OT_SEGMENT].size()) ) {
             for (size_t k= 0; k < uids.size(); ++k) {
                 lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
                 constrInfo cinfo(type,{ET_EQ_PARAM},{new ConstrEqual(li->beg->x,li->end->x)},{uids[k]});//CT_VERTICAL;
@@ -661,7 +674,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_HORIZONTAL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size() ) {
+        if ( uids.size() == (grouped[OT_LINE].size()+
+                             grouped[OT_RAY].size()+
+                             grouped[OT_SEGMENT].size()) ) {
             for (size_t k= 0; k < uids.size(); ++k) {
                 lirep* li = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
                 constrInfo cinfo(type,{ET_EQ_PARAM},{new ConstrEqual(li->beg->y,li->end->y)},{uids[k]});//CT_HORIZONTAL;
@@ -686,9 +701,15 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             constrainEntities({uids[0], uids[1]}, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added distance " << parame << " between points " << *pt0 << " and " << *pt1 << std::endl;
             added = true;
-        } else if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1 ) { // Distance between point and line
+        } else if (uids.size() == 2 && grouped[OT_POINT].size() == 1 && (grouped[OT_LINE].size()+
+                                                                         grouped[OT_RAY].size()+
+                                                                         grouped[OT_SEGMENT].size()) == 1 ) { // Distance between point and line
             ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
-            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+
+            UID objid = grouped[OT_LINE].size()?grouped[OT_LINE].front():(
+                        grouped[OT_RAY].size()?grouped[OT_RAY].front():(
+                        grouped[OT_SEGMENT].size()?grouped[OT_SEGMENT].front():NOUID));
+            lirep* line = dynamic_cast<lirep*>(m_objects[objid].obj);
             _paramVals.push_back(parame);
             _params.push_back(&_paramVals.back());
             constrInfo cinfo(type,{ET_DIST_P2L},{ new ConstrP2LDist(*pt,*line,&_params.back())},uids,&_params.back());
@@ -706,7 +727,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             MOOLOG << "Core::tryAddConstraint - added dimension "<<parame << " for line " << *line << std::endl;
             added = true;
         }
-        else if ( uids.size() == 2 && grouped[OT_SEGMENT].size() ==2) { // Distance between 2 parallel segments
+        else if ( uids.size() == 2 && (grouped[OT_LINE].size()+
+                                       grouped[OT_RAY].size()+
+                                       grouped[OT_SEGMENT].size()) ==2) { // Distance between 2 parallel segments
             int ng = findConstrGroupByObjID(uids[0]);
             // verify we have parallel segments
             if ( ng < 0 ){
@@ -730,10 +753,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         }
         else if ( uids.size() == 1 && grouped[OT_CIRCLE].size() == 1 ) {
             circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][0]].obj);
-            _paramVals.push_back(parame);
-            _params.push_back(&_paramVals.back());
-            *ci->r->pval = *(_params.back().pval);
-            constrInfo cinfo(type,{ET_EQ_CONST},{ new ConstrEqual(&_params.back(),ci->r)},uids,&_params.back());
+            *ci->r->pval = parame;
+            constrInfo cinfo(type,{ET_CONST},{ new ConstrConst(ci->r)},uids,&_params.back());
+
             constrainEntities({uids[0]}, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added radius" <<parame << " for circle (" <<  *(ci->center) <<","<< *(ci->r->pval) << ")"<< std::endl;
             added = true;
@@ -754,7 +776,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_ANGLE:{
-        if ( uids.size() == 2 && uids.size() == grouped[OT_SEGMENT].size() ) {
+        if ( uids.size() == 2 && uids.size() == (grouped[OT_LINE].size()+
+                                                 grouped[OT_RAY].size()+
+                                                 grouped[OT_SEGMENT].size()) ) {
             _paramVals.push_back(parame);
             _params.push_back(&_paramVals.back());
             lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
@@ -767,8 +791,9 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_PARALLEL:{
-        if ( uids.size() == grouped[OT_SEGMENT].size()  && grouped[OT_SEGMENT].size() > 1 ) {
-            for (size_t k= 0; k < grouped[OT_SEGMENT].size()-1; ++k) {
+        size_t numli = grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size();
+        if ( uids.size() > 1 && uids.size() == numli ) {
+            for (size_t k= 0; k < numli-1; ++k) {
                 lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
                 lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
                 constrInfo cinfo(type,{ET_PARL_L2L},{new ConstrL2LParal(*line0,*line1)},{uids[k],uids[k+1]} );//CT_PARALLEL;
@@ -780,7 +805,8 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_ORTHO:{
-        if ( uids.size() == 2 && grouped[OT_SEGMENT].size() == 2 ) {
+        size_t numli = grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size();
+        if ( uids.size() == 2 && numli == uids.size() ) {
             lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[0]].obj);
             lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[1]].obj);
             constrInfo cinfo(type,{ET_ORTO_L2L}, {new ConstrL2LOrtho2(*line0,*line1)},uids);//CT_ORTHO;
@@ -791,27 +817,27 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_TANGENT:{
-        if ( !grouped[OT_SEGMENT].empty() ) {
+        size_t numli = grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size();
+        if ( numli == 1 ) {
+            UID objid = grouped[OT_LINE].size()?grouped[OT_LINE].front():(
+                                                    grouped[OT_RAY].size()?grouped[OT_RAY].front():(
+                                                                               grouped[OT_SEGMENT].size()?grouped[OT_SEGMENT].front():NOUID));
+            lirep* li = dynamic_cast<lirep*>(m_objects[objid].obj);
+
             if ( grouped[OT_CIRCLE].size() == 1 ){
                 circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][0]].obj);
-                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
-                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
-                    constrInfo cinfo(type,{ET_DIST_P2L}, {new ConstrP2LDist(*(ci->center),*(li),ci->r,true)} ,{grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]});
-                    constrainEntities({grouped[OT_CIRCLE][0],grouped[OT_SEGMENT][k]},cinfo,puid);
-                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r)->pval << ")"<< std::endl;
-                    added = true;
-                }
+                constrInfo cinfo(type,{ET_DIST_P2L}, {new ConstrP2LDist(*(ci->center),*(li),ci->r,true)} ,{grouped[OT_CIRCLE][0],objid});
+                constrainEntities({grouped[OT_CIRCLE][0],objid},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and circle ("<< *(ci->center) <<","<< *(ci->r)->pval << ")"<< std::endl;
+                added = true;
+
             }
             if ( grouped[OT_ARC].size() == 1 ){
                 arcrep* arc = dynamic_cast<arcrep*>(m_objects[grouped[OT_ARC][0]].obj);
-                for (size_t k = 0; k< grouped[OT_SEGMENT].size();++k){
-                    lirep* li = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][k]].obj);
-                    constrInfo cinfo(type,{ET_DIST_P2PL},{new ConstrP2PLDist(*(arc->center),*(arc->beg),*(li))},{grouped[OT_ARC][0],grouped[OT_SEGMENT][k]});//CT_TANGENT;
-                    constrainEntities({grouped[OT_ARC][0],grouped[OT_SEGMENT][k]},cinfo,puid);
-                    MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and arc ("<< *(arc->center) <<","<< *(arc->beg)<<","<< *(arc->end) << ")"<< std::endl;
-                    added = true;
-                }
-
+                constrInfo cinfo(type,{ET_DIST_P2PL},{new ConstrP2PLDist(*(arc->center),*(arc->beg),*(li))},{grouped[OT_ARC][0],objid});//CT_TANGENT;
+                constrainEntities({grouped[OT_ARC][0],objid},cinfo,puid);
+                MOOLOG << "Core::tryAddConstraint - added tangent for line " << *li<< " and arc ("<< *(arc->center) <<","<< *(arc->beg)<<","<< *(arc->end) << ")"<< std::endl;
+                added = true;
             }
         }
         break;
@@ -825,9 +851,15 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
             MOOLOG << "Core::tryAddConstraint - added coincident for "<< *pt0 << " and " << *pt1 << std::endl;
             added = true;
         }
-        else if ( uids.size() == 2 && grouped[OT_POINT].size() == 1 && grouped[OT_SEGMENT].size() == 1){
+        else if ( uids.size() == 2 &&
+                  grouped[OT_POINT].size() == 1 &&
+                  (grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size()) == 1){
             ptrep* pt = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
-            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            UID objid = grouped[OT_LINE].size()?grouped[OT_LINE].front():(
+                                                    grouped[OT_RAY].size()?grouped[OT_RAY].front():(
+                                                                               grouped[OT_SEGMENT].size()?grouped[OT_SEGMENT].front():NOUID));
+
+            lirep* line = dynamic_cast<lirep*>(m_objects[objid].obj);
             constrInfo cinfo(type,{ET_P_ON_L},{ new ConstrPOnL(*pt,*line)},uids);
             constrainEntities({uids[0], uids[1]}, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added coincident between point " << *pt << " and line " << *line << std::endl;
@@ -857,7 +889,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_COLLINEAR:{
-        if ( uids.size() >1  && uids.size() == grouped[OT_SEGMENT].size()  ) {
+        if ( uids.size() >1  && uids.size() == (grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size())  ) {
             for (size_t k= 0; k < uids.size()-1; ++k) {
                 lirep* line0 = dynamic_cast<lirep*>(m_objects[uids[k]].obj);
                 lirep* line1 = dynamic_cast<lirep*>(m_objects[uids[k+1]].obj);
@@ -870,10 +902,14 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         break;
     }
     case CT_SYMMETRIC:{
-        if ( uids.size() == 3 && grouped[OT_POINT].size() == 2 && grouped[OT_SEGMENT].size() == 1){
+        if ( uids.size() == 3 && grouped[OT_POINT].size() == 2 && (grouped[OT_LINE].size() + grouped[OT_RAY].size() + grouped[OT_SEGMENT].size()) == 1){
             ptrep* pt0 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][0]].obj);
             ptrep* pt1 = dynamic_cast<ptrep*>(m_objects[grouped[OT_POINT][1]].obj);
-            lirep* line = dynamic_cast<lirep*>(m_objects[grouped[OT_SEGMENT][0]].obj);
+            UID objid = grouped[OT_LINE].size()?grouped[OT_LINE].front():(
+                                                    grouped[OT_RAY].size()?grouped[OT_RAY].front():(
+                                                                               grouped[OT_SEGMENT].size()?grouped[OT_SEGMENT].front():NOUID));
+
+            lirep* line = dynamic_cast<lirep*>(m_objects[objid].obj);
             constrInfo cinfo(type,{ET_SYMM_PP2L,ET_ORTO_L2L},{ new ConstrPP2LSym(*pt0,*pt1,*line),new ConstrL2LOrtho2(*pt0,*pt1,*line)},uids);
             constrainEntities(uids, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added symmetric between point " << *pt0 << ", point  " << *pt1 << " and line " << *line << std::endl;
@@ -1077,6 +1113,12 @@ void georis::Core::groupObjUIDsByType(const std::vector<UID> &uids, std::map<Obj
         case OT_POINT:
             MOOLOG << "point";
             break;
+        case OT_LINE:
+            MOOLOG << "line";
+            break;
+        case OT_RAY:
+            MOOLOG << "ray";
+            break;
         case OT_SEGMENT:
             MOOLOG << "segment";
             break;
@@ -1095,10 +1137,11 @@ void georis::Core::groupObjUIDsByType(const std::vector<UID> &uids, std::map<Obj
 int georis::Core::solve(){
     try{
         auto t1 = Clock::now();
+        MOOLOG << "Core::solve - there are "<< m_constrGroups.size() << " constrgroups" << std::endl;
+
         for (auto& cgroup: m_constrGroups ){
             if ( cgroup.unsolved ){
                 bool bHasEqs = false;
-                std::vector<paramProxy*> param = cgroup.getTunableParams();
 
                 // Analyze for presense of equality constraints
                 std::vector< std::set<paramProxy*> > equalityGroups = cgroup.groupEqParams();
@@ -1116,11 +1159,11 @@ int georis::Core::solve(){
                         }
                     }
                 }
-                size_t objCount = 0;
 
+                size_t objCount = 0;
                 for (auto &ci: cgroup.constraints ) objCount += ci.second.objs.size();
                 MOOLOG << "Core::solve - there are "<< objCount << " objects" << std::endl;
-                MOOLOG << "Core::solve - there are "<< param.size() << " tunable param" << std::endl;
+                MOOLOG << "Core::solve - there are "<< cgroup.constants.size() << " constant parameters" << std::endl;
                 MOOLOG << "Core::solve - there are " << equalityGroups.size() << " parameter groups" << std::endl;
                 MOOLOG << "Core::solve - there are "<< cgroup.constraints.size() << " constraints" << std::endl;
                 MOOLOG << "Core::solve - there are "<< errs.size() << " error functions " << std::endl;
@@ -1128,8 +1171,19 @@ int georis::Core::solve(){
                 if ( !errs.empty() ) {
 
                     std::vector< std::vector<paramProxy*> > vEqualityGroups;
-                    for (auto &pg : equalityGroups )
-                        vEqualityGroups.emplace_back(pg.begin(),pg.end());
+                    for (auto &eqg : equalityGroups ){
+                        // Check if any of pg members is fixed
+                        bool bIsFixed = false;
+                        for (auto pp:eqg ){
+                            if (cgroup.constants.find(pp) != cgroup.constants.end() ){
+                                bIsFixed = true;
+                                break;
+                            }
+                        }
+                        if ( bIsFixed ) continue;
+                        vEqualityGroups.emplace_back(eqg.begin(),eqg.end());
+                    }
+                    MOOLOG << "Core::solve - there are "<< vEqualityGroups.size() << " tunable param" << std::endl;
 
                     // Create function for constraints group
 
@@ -1251,10 +1305,18 @@ void georis::Core::removeFixedParameters(std::vector<paramProxy*>& parame ){
     parame = std::vector<paramProxy*>(setpara.begin(),setpara.end());
 }
 RESCODE georis::Core::moveObjects(const std::vector<UID>& objs,double dx, double dy){
-    if ( (dx*dx+dy*dy) <= 0 ) return RC_OK;
+    if ( (dx*dx+dy*dy) <= 0 || objs.empty() || (dx == 0 && dy ==0 )) return RC_OK;
+
     auto objsnochi(objs);
     filterChildObj(objsnochi);
     MOOLOG << "Core::moveObjects moving " << objsnochi.size() << " by " << dx << ", " << dy << std::endl;
+    // Filter out fixed objects
+    for ( int k = objsnochi.size() - 1 ; k >= 0;--k ){
+        if ( m_objects[objsnochi[k]].obj->fixed )
+            objsnochi.erase(objsnochi.begin() + k);
+    }
+    MOOLOG << "Core::moveObjects only " << objsnochi.size() << " movable objects left" << std::endl;
+
     backupState();
     for (auto v:objsnochi){
         auto it = m_objects.find(v);

@@ -9,56 +9,48 @@
 
 georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Double_Window(W, H, L) {
     m_controller = nullptr;
-    resizable(this);
+    begin();
+    _toolbar = new Fl_Toolbar(0,0);
+    _toolbar->begin();
+    Fl_Button *bu = _toolbar->AddButton("Новый",cbFileNew); bu->label("@+2filenew");
+    bu = _toolbar->AddButton("Открыть",cbFileOpen); bu->label("@+2fileopen");
+    bu = _toolbar->AddButton("Сохранить",cbFileSave); bu->label("@+2filesave");
+    //bu = _toolbar->AddButton("Отмена",cbUndo); bu->label("@+2undo");
+    //bu = _toolbar->AddButton("Повтор",cbRedo); bu->label("@+2redo");
+    _toolbar->addDivider();
+    _modebuttons[IM_POINT]   = _toolbar->AddCheckButton("Точка",new Fl_Pixmap(drawPoint_xpm),new Fl_Pixmap(drawPoint_selected_xpm), cbDrawPoint,1);
+    _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawSegment_xpm),new Fl_Pixmap(drawSegment_selected_xpm), cbDrawSegment,1);
+    _modebuttons[IM_RAY]     = _toolbar->AddCheckButton("Луч",new Fl_Pixmap(drawRay_xpm),new Fl_Pixmap(drawRay_selected_xpm), cbDrawRay,1);
+    _modebuttons[IM_LINE]    = _toolbar->AddCheckButton("Прямая",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
+    _toolbar->addDivider();
+    _modebuttons[IM_CIRCLE]  = _toolbar->AddCheckButton("Окружность",new Fl_Pixmap(drawCircle_xpm),new Fl_Pixmap(drawCircle_selected_xpm), cbDrawCircle,1);
+    _modebuttons[IM_ARC]     = _toolbar->AddCheckButton("Дуга",new Fl_Pixmap(drawArc_xpm),new Fl_Pixmap(drawArc_selected_xpm), cbDrawArc,1);
+    _toolbar->addDivider();
+    _modebuttons[IM_RECT]    = _toolbar->AddCheckButton("Прямоугольник",new Fl_Pixmap(drawRect_xpm),new Fl_Pixmap(drawRect_selected_xpm), cbDrawRect,1);
+    _toolbar->end();
 
-    Fl_Group * group = new Fl_Group(20,40,W-20,H-20);
-
-    _infowin = new GeInfoWindow(5,40,100,600);
+    //Fl_Group * group = new Fl_Group(0,_toolbar->h(),W, H - _toolbar->h());
+    //group->begin();
+    _infowin = new GeInfoWindow(5, _toolbar->h() + 1 ,100, H - _toolbar->h()-1);
     _infowin->hide();
-
-    _glWindow = new GeGlWindow(_infowin->w() + 5,40,W - (_infowin->w() + 5),H-40);
-    //_glWindow = new GeGlWindow(5 ,40, W - 5,H-40);
-    resizable(_glWindow);
+    _glWindow = new GeGlWindow(_infowin->w() + 5,_toolbar->h()+1,W - (_infowin->w() + 5), H - _toolbar->h()-1);
     _glWindow->hide();
 
-    group->end();
+    //group->resizable(_glWindow);
+    //group->resizable(group);
+    //_infowin->resizable(group);
 
-    _toolbar = new Fl_Toolbar(0,0);
+    //group->end();
 
-    Fl_Button *bu = _toolbar->AddButton("Новый",cbFileNew);
-    bu->label("@+2filenew");
-    bu = _toolbar->AddButton("Открыть",cbFileOpen);
-    bu->label("@+2fileopen");    
-    bu = _toolbar->AddButton("Сохранить",cbFileSave);
-    bu->label("@+2filesave");
-    bu = _toolbar->AddButton("Отмена",cbUndo);
-    bu->label("@+2undo");
-    bu = _toolbar->AddButton("Повтор",cbRedo);
-    bu->label("@+2redo");
-
-
-
-    _toolbar->addDivider();
-    _modebuttons[IM_POINT] = _toolbar->AddCheckButton("Точка",new Fl_Pixmap(drawPoint_xpm),new Fl_Pixmap(drawPoint_selected_xpm), cbDrawPoint,1);
-    _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawSegment_xpm),new Fl_Pixmap(drawSegment_selected_xpm), cbDrawLine,1);
-    _modebuttons[IM_RAY] = _toolbar->AddCheckButton("Луч",new Fl_Pixmap(drawRay_xpm),new Fl_Pixmap(drawRay_selected_xpm), cbDrawLine,1);
-    _modebuttons[IM_LINE] = _toolbar->AddCheckButton("Прямая",new Fl_Pixmap(drawLine_xpm),new Fl_Pixmap(drawLine_selected_xpm), cbDrawLine,1);
-
-    _toolbar->addDivider();
-    _modebuttons[IM_CIRCLE] = _toolbar->AddCheckButton("Окружность",new Fl_Pixmap(drawCircle_xpm),new Fl_Pixmap(drawCircle_selected_xpm), cbDrawCircle,1);
-    _modebuttons[IM_ARC] = _toolbar->AddCheckButton("Дуга",new Fl_Pixmap(drawArc_xpm),new Fl_Pixmap(drawArc_selected_xpm), cbDrawArc,1);
-    _toolbar->addDivider();
-    _modebuttons[IM_RECT] = _toolbar->AddCheckButton("Прямоугольник",new Fl_Pixmap(drawRect_xpm),new Fl_Pixmap(drawRect_selected_xpm), cbDrawRect,1);
-
+    /*
     _statusbar = new Fl_Box(0,H-20,W,20);
     _statusbar->box(FL_FLAT_BOX); // make the box 'flat' (no decorations)
     _statusbar->align(FL_ALIGN_LEFT|FL_ALIGN_INSIDE);// align status text to left/top of widget
     _statusbar->color(48-2); // slightly darker than default FLTK widget color (48)
-
-    _glWindow->setStatusBar(_statusbar);
-
-    setStatusMessage("Hello");
+    */
+    //setStatusMessage("Hello");
     end();
+    resizable(_glWindow);
 }
 
 georis::GeFLTKVisualizer::~GeFLTKVisualizer() {
@@ -77,12 +69,12 @@ int georis::GeFLTKVisualizer::handle(int event) {
     case FL_KEYBOARD:
         return processKeyboard(Fl::event_key());
     }
-	return Fl_Double_Window::handle(event);
+    return Fl_Double_Window::handle(event);
 }
 
 void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
     //MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
-	_glWindow->setMode(mode);
+    _glWindow->setMode(mode);
 
     for (auto it : _modebuttons )
         it.second->value(0);
@@ -90,10 +82,9 @@ void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
         _modebuttons[mode]->value(1);
 }
 void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
-
-    _glWindow->resize(_infowin->w()+5,40,w - (_infowin->w() + 5),h-40);
-    //_glWindow->resize(5,40,w - 5,h-40);
-
+    _toolbar->resize(0,0,w,_toolbar->h());
+    _infowin->resize(5,_toolbar->h()+1,100, h - _toolbar->h()-1);
+    _glWindow->resize(_infowin->w()+5,_toolbar->h()+1,w - (_infowin->w() + 5),h-_toolbar->h()-1);
 }
 int georis::GeFLTKVisualizer::processKeyboard(int key) {
     //MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
@@ -115,6 +106,14 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
             break;
         case 'l':
         case 'L':
+            setInputMode(IM_LINE);
+            break;
+        case 'r':
+        case 'R':
+            setInputMode(IM_RAY);
+            break;
+        case 's':
+        case 'S':
             setInputMode(IM_SEGMENT);
             break;
         case 'p':
@@ -159,16 +158,22 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
             break;
         }
     }
-   _glWindow->redraw();
-	return 1;
+    _glWindow->redraw();
+    return 1;
 }
 void georis::GeFLTKVisualizer::drawObject(ObjectType type, const std::vector<double> &param,unsigned status){
     switch (type){
-    case georis::OT_POINT:        
+    case georis::OT_POINT:
         _glWindow->drawPoint(param[0],param[1],status);
         break;
-    case georis::OT_SEGMENT:
+    case georis::OT_LINE:
         _glWindow->drawLine(param[0],param[1],param[2],param[3],status);
+        break;
+    case georis::OT_RAY:
+        _glWindow->drawRay(param[0],param[1],param[2],param[3],status);
+        break;
+    case georis::OT_SEGMENT:
+        _glWindow->drawSegment(param[0],param[1],param[2],param[3],status);
         break;
     case georis::OT_CIRCLE:
         _glWindow->drawCircle(param[0],param[1],param[2],status);
@@ -199,7 +204,7 @@ void georis::GeFLTKVisualizer::displayConstraint(DCType type, double value,const
         _glWindow->drawAngleDimLine(param[0],param[1],param[2],param[3],param[4],param[5],buff,status);
         break;
 
-    defaut:
+defaut:
         ;
     }
 }
@@ -216,16 +221,16 @@ void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
     //fnfc.filter("Text\t*.txt\nC Files\t*.{cxx,h,c}");
     fnfc.directory(".");           // default directory to use
-// Show native chooser
+    // Show native chooser
     switch ( fnfc.show() ) {
-        case -1:
-            MOOLOG << "ERROR: " <<  fnfc.errmsg() << std::endl;
-            break;  // ERROR
-        case  1:
-            MOOLOG << "CANCEL" << std::endl;
-            break;  // CANCEL
-        default:
-            MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
+    case -1:
+        MOOLOG << "ERROR: " <<  fnfc.errmsg() << std::endl;
+        break;  // ERROR
+    case  1:
+        MOOLOG << "CANCEL" << std::endl;
+        break;  // CANCEL
+    default:
+        MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
         break;  // FILE CHOSEN
     }
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->loadFrom(fnfc.filename());
@@ -236,18 +241,18 @@ void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
     fnfc.title("Pick a file");
     fnfc.type(Fl_Native_File_Chooser::BROWSE_FILE);
     fnfc.filter("Georis XML\t*.grx\nSQL\t*.{sql}");
-//    fnfc.filter("Georis XML\t*.grx\nSQL\t*.{cxx,h,c}");
+    //    fnfc.filter("Georis XML\t*.grx\nSQL\t*.{cxx,h,c}");
     fnfc.directory(".");           // default directory to use
-// Show native chooser
+    // Show native chooser
     switch ( fnfc.show() ) {
-        case -1:
-            MOOLOG << "ERROR: " <<  fnfc.errmsg() << std::endl;
-            break;  // ERROR
-        case  1:
-            MOOLOG << "CANCEL" << std::endl;
-            break;  // CANCEL
-        default:
-            MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
+    case -1:
+        MOOLOG << "ERROR: " <<  fnfc.errmsg() << std::endl;
+        break;  // ERROR
+    case  1:
+        MOOLOG << "CANCEL" << std::endl;
+        break;  // CANCEL
+    default:
+        MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
         break;  // FILE CHOSEN
     }
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->saveTo(fnfc.filename());
@@ -262,27 +267,39 @@ void georis::GeFLTKVisualizer::cbRedo(Fl_Widget*w, void*d) {
 
 
 void georis::GeFLTKVisualizer::cbDrawPoint(Fl_Widget*w, void*d) {
-	if (!((Fl_ImageCheckButton*)w)->value() )
+    if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
-	else
+    else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_POINT);
 }
 void georis::GeFLTKVisualizer::cbDrawLine(Fl_Widget*w, void*d) {
-	if (!((Fl_ImageCheckButton*)w)->value() )
+    if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
-	else
+    else
+        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_LINE);
+}
+void georis::GeFLTKVisualizer::cbDrawRay(Fl_Widget*w, void*d) {
+    if (!((Fl_ImageCheckButton*)w)->value() )
+        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
+    else
+        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_RAY);
+}
+void georis::GeFLTKVisualizer::cbDrawSegment(Fl_Widget *w, void*d) {
+    if (!((Fl_ImageCheckButton*)w)->value() )
+        ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
+    else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_SEGMENT);
 }
 void georis::GeFLTKVisualizer::cbDrawCircle(Fl_Widget*w, void*d) {
-	if (!((Fl_ImageCheckButton*)w)->value() )
+    if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
-	else
+    else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_CIRCLE);
 }
 void georis::GeFLTKVisualizer::cbDrawArc(Fl_Widget*w, void*d) {
-	if (!((Fl_ImageCheckButton*)w)->value() )
+    if (!((Fl_ImageCheckButton*)w)->value() )
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
-	else
+    else
         ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_ARC);
 }
 void georis::GeFLTKVisualizer::cbDrawRect(Fl_Widget*w, void*d) {
@@ -293,39 +310,13 @@ void georis::GeFLTKVisualizer::cbDrawRect(Fl_Widget*w, void*d) {
 }
 
 void georis::GeFLTKVisualizer::setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
-                         const std::vector< std::pair<UID,std::string> > &constrsSel,
+                                                const std::vector< std::pair<UID,std::string> > &constrsSel,
                                                 const std::vector<georis::ConstraintType>& constrsAvail){
 
     _infowin->setSelectionInfo(objsSel,constrsSel,constrsAvail);
 }
 
-/*
-void georis::GeFLTKVisualizer::setAvailConstraints(const std::vector<georis::ConstraintType> &constr) {
-    MOOLOG << "GeFLTKVisualizer::setAvailConstraints called with " << constr.size() << " constraints " << std::endl;
-
-}
-void georis::GeFLTKVisualizer::setSelectedObjs(const std::map<UID,std::string> &objNames){
-
-}
-void georis::GeFLTKVisualizer::setSelectedConstraints(const std::map<UID, std::string> &constrNames){
-
-
-}
-*/
-
-/*
-void GeFLTKVisualizer::setSelectionparamProxys(const std::vector<UIConstrInfo> &constrInfos,const GeoObjInfo *objInfo){
-    MOOLOG << "GeFLTKVisualizer::setSelectionparamProxys " << constrInfos.size() << std::endl;
-	if (objInfo != nullptr ){
-        MOOLOG << "\tobjInfo.type " << objInfo->type << std::endl;
-		for ( size_t k = 0;k < objInfo->paramProxy.size();++k )
-            MOOLOG << "\tobjInfo.paramProxy[" << k << "] " << objInfo->paramProxy[k] << std::endl;
-        MOOLOG << "\tobjInfo.status" << objInfo->status << std::endl;
-	}
-
-}
-*/
 void georis::GeFLTKVisualizer::setStatusMessage(const char *msg) {
-    _statusbar->copy_label(msg);
-    _statusbar->redraw();
+    //_statusbar->copy_label(msg);
+    //_statusbar->redraw();
 }

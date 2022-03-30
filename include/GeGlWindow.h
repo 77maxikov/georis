@@ -4,13 +4,16 @@
 #include <FL/Fl_Box.H>
 #include "controller.h"
 #include "fontdata.h"
+#include "objects.h"
 
 class GeGlWindow:public Fl_Gl_Window{
    public:
       GeGlWindow(int x,int y, int w,int h,const char *name=0);
       void setController(georis::Controller *c){if (c) m_controller = c;};
-      void setStatusBar(Fl_Box *b){m_statusbar = b;};
+      //void setStatusBar(Fl_Box *b){m_statusbar = b;};
       void drawPoint(double x, double y,unsigned status );
+      void drawSegment(double x1, double y1, double x2, double y2,unsigned status );
+      void drawRay(double x1, double y1, double x2, double y2,unsigned status );
       void drawLine(double x1, double y1, double x2, double y2,unsigned status );
       void drawCircle(double x, double y, double r,unsigned status );
       //void drawArc(double cx, double cy, double px,double py, double angle,unsigned status);
@@ -24,7 +27,7 @@ class GeGlWindow:public Fl_Gl_Window{
       virtual void resize(int x,int y, int w,int h);
 
    private:
-      Fl_Box *m_statusbar;
+      //Fl_Box *m_statusbar;
 
       georis::Controller *m_controller;
       georis::FontData m_fontdata;
@@ -52,6 +55,8 @@ class GeGlWindow:public Fl_Gl_Window{
       void processMove(int x,int y);
       void zoomIn(double px,double py);
       void zoomOut(double px,double py);
+      void updateCurrentPos(double x, double y);
+      georis::AABBr getScreenBox()const;
 
       void intDrawArc(double cx, double cy, double bx,double by, double ex, double ey);
 
