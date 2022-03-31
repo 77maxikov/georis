@@ -756,7 +756,6 @@ void georis::Controller::showSelectionInfo() {
         for (auto it : commonSelConstrs )
             constrsSel.push_back(std::make_pair(it,m_constrs[it].name));
 
-
         // Show available constraints
 
         if ( totalfree != 0 ) {
@@ -815,6 +814,24 @@ void georis::Controller::showSelectionInfo() {
                     constrsAvail.push_back(CT_TANGENT);
             }
         }
+    }
+
+    if ( !constrsAvail.empty() && !constrsSel.empty() ){
+
+        std::vector<ConstraintType> selct;
+        selct.reserve(constrsSel.size());
+        for ( auto &cs:constrsSel ){
+            ConstraintType ct;
+            std::vector<UID> objs;
+            m_core.queryConstrInfo(cs.first,ct,objs);
+            selct.push_back(ct);
+        }
+        std::vector<ConstraintType> diff;
+        std::sort(constrsAvail.begin(),constrsAvail.end());
+        std::sort(selct.begin(),selct.end());
+        std::set_difference(constrsAvail.begin(), constrsAvail.end(), selct.begin(), selct.end(),
+                                std::back_inserter(diff));
+        constrsAvail.swap(diff);
     }
     m_ui->setSelectionInfo(objsSel,constrsSel,constrsAvail);
 
