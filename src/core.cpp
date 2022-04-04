@@ -353,13 +353,19 @@ RESCODE georis::Core::setObjParam(UID uid,const std::vector<double>&parame ){
     if ( it == m_objects.end() ) return RC_NO_OBJ;
     if ( (*it).second.obj->fixed ) return RC_OK;
 
-    backupState();
-    (*it).second.obj->setParam(parame);
-    int res = solve();
-    if ( 0 == res ) return res;
-    MOOLOG << "Core::setObjParam infeasible, restoring " << std::endl;
-    restoreState();
-
+    int ng = findConstrGroupByObjID(uid);
+    if ( ng < 0 ){
+        (*it).second.obj->setParam(parame);
+    }
+    else{
+        backupState();
+        m_constrGroups[ng].unsolved = true;
+        (*it).second.obj->setParam(parame);
+        int res = solve();
+        if ( 0 == res ) return res;
+        MOOLOG << "Core::setObjParam infeasible, restoring " << std::endl;
+        restoreState();
+    }
     return RC_OK;
 }
 RESCODE georis::Core::queryObjInfo(UID uid,ObjectType &ot,std::vector<double>&parame,size_t &freedeg)const {
@@ -1145,6 +1151,13 @@ int georis::Core::solve(){
 
                 // Analyze for presense of equality constraints
                 std::vector< std::set<paramProxy*> > equalityGroups = cgroup.groupEqParams();
+                cgroup.linkEqualParams( equalityGroups );
+                for ( auto &eg:equalityGroups ){
+                    for ( auto pp: eg ){
+                        MOOLOG << "pv " << pp->pval << " val "<< *pp->pval <<" or "<< pp->orig << " val "<< (*pp->orig) <<std::endl;
+                    }
+                    MOOLOG << "---------------" << std::endl;
+                }
                 std::vector<IConstraint*> errs;                
                 for ( auto &cgc: cgroup.constraints ){
                     // filter out all equal constraints
@@ -1305,35 +1318,48 @@ void georis::Core::removeFixedParameters(std::vector<paramProxy*>& parame ){
     parame = std::vector<paramProxy*>(setpara.begin(),setpara.end());
 }
 RESCODE georis::Core::moveObjects(const std::vector<UID>& objs,double dx, double dy){
-    if ( (dx*dx+dy*dy) <= 0 || objs.empty() || (dx == 0 && dy ==0 )) return RC_OK;
+    if ( objs.empty() || (dx == 0 && dy ==0 )) return RC_OK;
 
-    auto objsnochi(objs);
-    filterChildObj(objsnochi);
-    MOOLOG << "Core::moveObjects moving " << objsnochi.size() << " by " << dx << ", " << dy << std::endl;
-    // Filter out fixed objects
-    for ( int k = objsnochi.size() - 1 ; k >= 0;--k ){
-        if ( m_objects[objsnochi[k]].obj->fixed )
-            objsnochi.erase(objsnochi.begin() + k);
-    }
-    MOOLOG << "Core::moveObjects only " << objsnochi.size() << " movable objects left" << std::endl;
+    // Extraxt unique X and Y coords of objects which can be moved
+    std::set<double* > xCoords, yCoords;
+    for ( auto objid: objs ){
+        auto it = m_objects.find(objid);
+        if ( it == m_objects.end() ) return RC_NO_OBJ;
 
-    backupState();
-    for (auto v:objsnochi){
-        auto it = m_objects.find(v);
-        if ( it != m_objects.end() ){
-            (*it).second.obj->move(dx,dy);
-            int ng = findConstrGroupByObjID(v);
+        objInfo& oi = (*it).second;
+        if ( oi.isChild() ){
+            if ( oi.obj->fixed ) continue;
+            int ng = findConstrGroupByObjID(objid);
             if ( ng > -1 ) m_constrGroups[ng].unsolved = true;
-            else{
-                std::vector<UID> children;
-                getObjChilds(v,children);
-                for (auto chi:children){
-                    int ng = findConstrGroupByObjID(chi);
-                    if ( ng > -1 ) m_constrGroups[ng].unsolved = true;
-                }
+
+            ptrep* pt = dynamic_cast<ptrep*>( oi.obj );
+            xCoords.insert(pt->x->pval);
+            yCoords.insert(pt->y->pval);
+        }
+        else{
+            if ( oi.obj->fixed ) continue;
+            for (size_t k = 0; k < oi.MAXCHILDS; ++k ){
+                if ( oi.objChilds[k] == NOUID ) break;
+                objInfo& choi = m_objects[oi.objChilds[k]];
+                if ( choi.obj->fixed ) continue;
+                ptrep* pt = dynamic_cast<ptrep*>( choi.obj );
+                xCoords.insert(pt->x->pval);
+                yCoords.insert(pt->y->pval);
+                int ng = findConstrGroupByObjID(objid);
+                if ( ng > -1 ) m_constrGroups[ng].unsolved = true;
             }
         }
     }
+
+    backupState();
+
+    // Update coords
+    for ( auto xpp : xCoords )
+        *xpp += dx;
+    for ( auto ypp : yCoords )
+        *ypp += dy;
+
+    MOOLOG << "Core::moveObjects moving xCoords " << xCoords.size() << " yCoords " << yCoords.size() << " by " << dx << ", " << dy << std::endl;
     int res = solve();
     if ( 0 == res ) return res;
     MOOLOG << "Core::moveObjects infeasible move, restoring " << std::endl;
@@ -1359,7 +1385,6 @@ void georis::Core::filterChildObj(std::vector<UID> &objs)const{
                 }
         ++k;
     }
-
 }
 
 int georis::Core::findConstrGroupByConstrID(UID constrID)const{
@@ -1577,15 +1602,38 @@ std::vector<std::set<georis::paramProxy*> > georis::Core::constrGroup::groupEqPa
 
     return equalityGroups;
 }
+
 void georis::Core::constrGroup::linkEqualParams(std::vector<std::set<paramProxy*> > &equalityGroups){
     for ( auto &eqg: equalityGroups ){
         if ( eqg.size() > 1 ){
-            std::set<paramProxy*>::iterator base = eqg.begin(),it = base;            
+            std::set<paramProxy*>::iterator base = eqg.begin();
+            size_t numConst = 0;
+            if ( constants.find(*base) != constants.end() )
+                numConst = 1;
+            // check for constant parameters
+            std::set<paramProxy*>::iterator  it = base;
             ++it;
-            (*base)->pval = (*base)->orig;
-
             while ( it != eqg.end() ){
-                (*it)->pval = (*base)->pval;
+                if ( constants.find(*it) != constants.end() ){
+                    if ( numConst > 0 ){
+                        if ( (*base)->pval != (*it)->pval && *(*base)->pval != *(*it)->pval ){
+                            // ACHTUNG !!!
+                            return;
+                        }
+                    }
+                    else{
+                        base = it;
+                        ++numConst;
+                    }
+                }
+                ++it;
+            }
+
+            (*base)->pval = (*base)->orig;
+            it = eqg.begin();
+            while ( it != eqg.end() ){
+                if ( it != base )
+                    (*it)->pval = (*base)->pval;
                 ++it;
             }
         }
@@ -1658,8 +1706,7 @@ void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo
         construid = UIDGen::instance()->generate();
 
     // Find if constrained objects are already in constrgroups
-    std::set<UID> sorter;
-    cinfo.objs = objuids;
+    std::set<UID> sorter;   
 
     std::vector<int> ngs(objuids.size(),-1);
     bool newGroupNeeded = true;
@@ -1669,7 +1716,7 @@ void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo
         getObjParent(objuids[k],uidpar);
         if ( uidpar == NOUID ){
             ngs[k] = findConstrGroupByObjID(objuids[k]);
-            // Find constraints of child objs
+            // Find constraint groups of child objs
             std::vector<UID> chuids;
             getObjChilds(objuids[k],chuids);
             if (!chuids.empty()){
@@ -1680,41 +1727,41 @@ void georis::Core::constrainEntities(const std::vector<UID>& objuids, constrInfo
                         newGroupNeeded = false;
                     }
                 }
-                //sorter.insert(chuids.begin(),chuids.end());
             }
         }
         else{ // we have parent obj
             ngs[k] = findConstrGroupByObjID(uidpar);
             if ( ngs[k] == -1 )
-                ngs[k] = findConstrGroupByObjID(objuids[k]);
-            //sorter.insert(uidpar);
+                ngs[k] = findConstrGroupByObjID(objuids[k]);            
         }
         if ( ngs[k] >= 0 ){ // There is a constrgroup already
             newGroupNeeded = false;
         }
-        /*
-        // Add all child objects too
-        std::vector<UID> chuids;
-        getObjChilds(objuids[k],chuids);
-        if (!chuids.empty())
-            sorter.insert(chuids.begin(),chuids.end());
-        */
     }
-
-    cinfo.objs.insert(cinfo.objs.end(),sorter.begin(),sorter.end());
-
-
+    size_t ng2ins = 0;
     if ( newGroupNeeded ){ // Add new group
         m_constrGroups.push_back(constrGroup());
-        m_constrGroups.back().constraints[construid] = cinfo;
+        ng2ins = m_constrGroups.size() - 1;
     }
-    else{ // Merge existing groups if needed
-        int ng2ins = mergeConstrGroups(ngs);
-        // Add constraint to resulting group
-        m_constrGroups[ng2ins].constraints[construid] = cinfo;
-        m_constrGroups[ng2ins].unsolved = true;
-    }
+    else // Merge existing groups if needed
+        ng2ins = mergeConstrGroups(ngs);
 
+    // Add constraint to resulting group
+    constrGroup &cg = m_constrGroups[ng2ins];
+    cg.constraints[construid] = cinfo;
+    cg.unsolved = true;
+/*
+    bool bNeedEqUpdate = false;
+    for ( auto et: cinfo.errTypes )
+        if ( et == ET_EQ_PARAM ){
+            bNeedEqUpdate = true;
+            break;
+        }
+    if ( bNeedEqUpdate ){
+        std::vector<std::set<paramProxy*> > eqg = cg.groupEqParams();
+        cg.linkEqualParams( eqg );
+    }
+*/
     for ( auto objuid : cinfo.objs )
         m_objects[objuid].constrs.push_back(construid);
 }

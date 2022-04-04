@@ -82,11 +82,83 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
             MOOLOG << ' ' << parame[k];
         MOOLOG << std::endl;
     }
+
+
+    if ( isSimpleObj(type) ){
+        addSimpleObj(type,parame,name);
+    }
+    else{
+        switch (type){
+        case OT_RECT:{
+            std::vector<UID> segids1;
+            std::vector<double> spar(4);
+            spar[0] = parame[0];
+            spar[1] = parame[1];
+            spar[2] = parame[2];
+            spar[3] = parame[1];
+            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids1) != RC_OK ) return;
+            std::vector<UID> cid(1,segids1[0]);
+            if ( addConstraint(CT_HORIZONTAL,cid) != RC_OK ) return;
+
+            std::vector<UID> segids2;
+            spar[0] = parame[2];
+            spar[1] = parame[1];
+            spar[2] = parame[2];
+            spar[3] = parame[3];
+            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids2) != RC_OK ) return;
+            cid[0] = segids2[0];
+            if ( addConstraint(CT_VERTICAL,cid) != RC_OK ) return;
+            cid[0] = segids1[2];
+            cid.push_back(segids2[1]);
+            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
+
+            spar[0] = parame[2];
+            spar[1] = parame[3];
+            spar[2] = parame[0];
+            spar[3] = parame[3];
+            std::vector<UID> segids3;
+            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids3) != RC_OK ) return;
+            cid.clear();
+            cid.push_back(segids3[0]);
+            if ( addConstraint(CT_HORIZONTAL,cid) != RC_OK ) return;
+            cid[0] = segids2[2];
+            cid.push_back(segids3[1]);
+            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
+
+            spar[0] = parame[0];
+            spar[1] = parame[3];
+            spar[2] = parame[0];
+            spar[3] = parame[1];
+            std::vector<UID> segids4;
+            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids4) != RC_OK ) return;
+            cid.clear();
+            cid.push_back(segids4[0]);
+            if ( addConstraint(CT_VERTICAL,cid) != RC_OK ) return;
+            cid[0] = segids3[2];
+            cid.push_back(segids4[1]);
+            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
+            cid[0] = segids4[2];
+            cid[1] = segids1[1];
+            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
+
+
+
+
+            break;
+        }
+        case OT_RECT3P:{
+            break;
+        }
+        }
+    }
+
+}
+RESCODE georis::Controller::addSimpleObj(georis::ObjectType type, const std::vector<double> &parame,const std::string &name,std::vector<UID>* newids){
     UID uid = NOUID;
     RESCODE res = m_core.addObject(type,parame,&uid);
     if ( res != RC_OK ){
         MOOLOG << "Controller::addObject unsuccesful" << std::endl;
-        return;
+        return res;
     }
     MOOLOG << "Controller::addObject added parent with UID " << uid << std::endl;
 
@@ -127,7 +199,7 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
     res = m_core.getObjChilds(uid,chids);
     if (res  != RC_OK ){
         MOOLOG << "Controller::addObject can't get children of new object" << std::endl;
-        return ;
+        return res;
     }
 
     for (auto chuid: chids){
@@ -201,11 +273,16 @@ void georis::Controller::addObject(georis::ObjectType type, const std::vector<do
             ;
         }
     }
-
+    if ( newids != nullptr ){
+        newids->clear();
+        newids->push_back(uid);
+        for (auto cid:chids)
+            newids->push_back(cid);
+    }
     m_memHighlights[0] = NOUID;
     m_memHighlights[1] = NOUID;
+    return RC_OK;
 }
-
 RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector<UID> &objects, double parame, const std::string &name,UID uid){
     for (auto uo: objects ){
         std::vector<double> par;
@@ -521,25 +598,29 @@ void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
 
     std::vector<UID> nearest;
     m_core.findObjInRect(xmin,ymin,xmax,ymax,nearest);
-
-    if ( !nearest.empty() ){
-        for ( size_t k = 0 ; k < nearest.size();++k ){
-            UID par;
-            m_core.getObjParent(nearest[k],par);
-            if ( par != NOUID  &&  m_objs[par].status & MODE_SELECTED && m_objs[nearest[k]].status & MODE_SELECTED) continue;
-
-            m_objs[nearest[k]].status ^= MODE_SELECTED;
-
-            unsigned status = m_objs[nearest[k]].status;
-
-            std::vector<UID> subs;
-            m_core.getObjChilds(nearest[k],subs);
-            for ( size_t s = 0 ; s < subs.size();++s )
-                m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
-
-        }
-        showSelectionInfo();
+    if ( nearest.empty() ) {
+        resetSelection();
+        return;
     }
+    m_core.filterChildObj(nearest);
+
+    for ( size_t k = 0 ; k < nearest.size();++k ){
+        UID par;
+        m_core.getObjParent(nearest[k],par);
+        if ( par != NOUID  &&  m_objs[par].status & MODE_SELECTED && m_objs[nearest[k]].status & MODE_SELECTED) continue;
+
+        m_objs[nearest[k]].status ^= MODE_SELECTED;
+        m_selectedObjs.push_back(nearest[k]);
+
+        unsigned status = m_objs[nearest[k]].status;
+
+        std::vector<UID> subs;
+        m_core.getObjChilds(nearest[k],subs);
+        for ( size_t s = 0 ; s < subs.size();++s )
+            m_objs[subs[s]].status ^= (m_objs[subs[s]].status ^ status) & MODE_SELECTED;
+
+    }
+    showSelectionInfo();
 }
 
 void georis::Controller::resetHighlight() {
@@ -604,6 +685,8 @@ void georis::Controller::highlightObj(double x,double y,double precision) {
 
 }
 void georis::Controller::constrainSelected(ConstraintType type,double parame) {
+    m_core.filterChildObj(m_selectedObjs);
+/*/
     std::vector<UID> selected;
     findObj(MODE_SELECTED, selected);
     std::vector<UID> filtered;
@@ -616,7 +699,8 @@ void georis::Controller::constrainSelected(ConstraintType type,double parame) {
             subob.insert(subob.end(),sub.begin(),sub.end());
     }
     std::set_difference(selected.begin(),selected.end(),subob.begin(),subob.end(),std::inserter(filtered,filtered.begin()));
-    if ( addConstraint(type,filtered,parame) == RC_OK )
+*/
+    if ( addConstraint(type,m_selectedObjs,parame) == RC_OK )
         resetSelection();
 }
 void georis::Controller::deleteSelected() {
@@ -651,7 +735,7 @@ void georis::Controller::findObj(unsigned stateMask,std::vector<UID> &res){
         if ( it.second.status & stateMask )
             res.push_back(it.first);
 }
-
+/*
 void georis::Controller::moveSelected(double dx,double dy) {
     if ( !m_selectedObjs.empty() ){
         if ( m_selectedObjs.size() == 1 ){
@@ -667,12 +751,13 @@ void georis::Controller::moveSelected(double dx,double dy) {
                 parame[2] += dr;
                 m_core.setObjParam(m_selectedObjs.front() ,parame );
             }
-
         }
         else
             m_core.moveObjects(m_selectedObjs,dx,dy);
     }
 }
+*/
+
 void georis::Controller::processDrag(double x, double y) {
 
     if ( !m_selectedObjs.empty() ){
@@ -738,18 +823,21 @@ void georis::Controller::showSelectionInfo() {
 
         // Collect common constrains for selected objects
         std::vector<UID> commonSelConstrs;
-        for (auto it = selected.begin(); it != selected.end();++it){
-            std::vector<UID> tmp;
-            m_core.getObjConstraints(*it,tmp);
-            if ( commonSelConstrs.empty() ){
-                commonSelConstrs.swap(tmp);
-                continue;
-            }
-            std::vector<UID> base;
-            base.swap(commonSelConstrs);
-            std::set_intersection(base.begin(),base.end(),tmp.begin(),tmp.end(),std::back_inserter(commonSelConstrs));
-        }
+        m_core.getObjConstraints(selected.front(),commonSelConstrs);
+        if ( selected.size() > 1 ){
+            for (size_t k = 1; k < selected.size();++k){
+                std::vector<UID> tmp;
+                m_core.getObjConstraints(selected[k],tmp);
+                if ( tmp.empty() ) {
+                    commonSelConstrs.clear();
+                    break;
+                }
 
+                std::vector<UID> base;
+                base.swap(commonSelConstrs);
+                std::set_intersection(base.begin(),base.end(),tmp.begin(),tmp.end(),std::back_inserter(commonSelConstrs));
+            }
+        }
 
 
         constrsSel.reserve(commonSelConstrs.size());

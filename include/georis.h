@@ -21,7 +21,9 @@ enum ObjectType{
     OT_ARC,
     OT_SPLINE,
     OT_LINE,
-    OT_RAY
+    OT_RAY,
+    OT_RECT,
+    OT_RECT3P
 };
 
 enum ConstraintType{

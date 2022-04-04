@@ -185,14 +185,8 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
                     if (m_controller) {
                         std::vector<double> tmp(4);
-                        tmp[0] = m_coo[2]; tmp[1] = m_coo[3];tmp[2] = m_coo[2]; tmp[3] = yCur;
-                        m_controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = m_coo[2]; tmp[1] = m_coo[3];tmp[2] = xCur; tmp[3] = m_coo[3];
-                        m_controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = xCur; tmp[1] = yCur;tmp[2] = xCur; tmp[3] = m_coo[3];
-                        m_controller->addObject(georis::OT_SEGMENT,tmp);
-                        tmp[0] = xCur; tmp[1] = yCur;tmp[2] = m_coo[2]; tmp[3] = yCur;
-                        m_controller->addObject(georis::OT_SEGMENT,tmp);
+                        tmp[0] = m_coo[2]; tmp[1] = m_coo[3];tmp[2] = xCur; tmp[3] = yCur;
+                        m_controller->addObject(georis::OT_RECT,tmp);
                     }
                 m_state = 0;
                 break;

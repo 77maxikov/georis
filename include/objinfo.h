@@ -20,6 +20,7 @@ struct objInfo{
         }while ( k<MAXCHILDS );
         return false;
     }
+    bool isChild()const{return objChilds[0] == NOUID;}
 };
 }
 #endif // OBJINFO_H

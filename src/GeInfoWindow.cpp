@@ -9,14 +9,14 @@
 GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,w,h,l)
 {
     m_controller = nullptr;
-
+    begin();
 
     Fl_Box *la = new Fl_Box(3,3,w-6,14);
     la->label("Объекты");
     la->labelsize(10);
     m_pBrowserSelected = new Fl_Multi_Browser(3,19,w-6,60);
     m_pBrowserSelected->textsize(10);
-    resizable(*m_pBrowserSelected);
+    //resizable(*m_pBrowserSelected);
 
     la = new Fl_Box(3,81,w-6,14);
     la->label("Связи");
@@ -27,7 +27,7 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
     m_pBrowserComCon->when(FL_ENTER);
 
     m_pBrowserComCon->textsize(10);
-    resizable(*m_pBrowserComCon);
+    //resizable(*m_pBrowserComCon);
 
 
     m_pActionToolbar = new Fl_Toolbar(3,166);
@@ -57,7 +57,6 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
 
     end();
 
-    //border(10);
     box(FL_BORDER_BOX);
 
 }

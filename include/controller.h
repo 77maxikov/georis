@@ -16,14 +16,14 @@ public:
     void setUI(IVisualizer *);
     void updateView();
 
-    void addObject(ObjectType type, const std::vector<double> &paramProxy,const std::string &name = std::string());
+    void addObject(ObjectType type, const std::vector<double> &parame,const std::string &name = std::string());
 
     size_t selectByPoint(double x,double y,double precision = 0.01);
     void selectByRect(double x1,double y1,double x2,double y2);
     void resetSelection();
 
     void deleteSelected();
-    void moveSelected(double dx,double dy);
+//    void moveSelected(double dx,double dy);
 
     void constrainSelected(ConstraintType type,double parame = 0);
     void toggleAuxSelected();
@@ -87,8 +87,8 @@ private:
 
     double findNearest(double x,double y,std::vector<UID> &objs)const;
 
-
     RESCODE addConstraint(ConstraintType type, const std::vector<UID> &objects,double parame = 0,const std::string &name = std::string(),UID id = NOUID);
+    RESCODE addSimpleObj(ObjectType type, const std::vector<double> &parame,const std::string &name,std::vector<UID>* newids = nullptr);
 
     void clearAll(){
         m_memHighlights[0] = NOUID;
@@ -100,8 +100,19 @@ private:
     }
 
     static const double _sel_precision;
-
-
+    static bool isSimpleObj(ObjectType typ){
+        switch (typ){
+        case OT_ARC:
+        case OT_CIRCLE:
+        case OT_LINE:
+        case OT_POINT:
+        case OT_RAY:
+        case OT_SEGMENT:
+        case OT_SPLINE:
+            return true;
+        }
+        return false;
+    }
 };
 }
 

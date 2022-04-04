@@ -178,7 +178,8 @@ struct ptrep:public point2r, public sketchObj {
         *(y->pval) += dy;
     }
     virtual double dist2point(double _x,double _y)const {
-        return std::sqrt( (*x->pval -_x)*(*x->pval -_x) + (*y->pval -_y)*(*y->pval -_y) );
+        // Halving the dist to boost points' priority
+        return 0.5*std::sqrt( (*x->pval -_x)*(*x->pval -_x) + (*y->pval -_y)*(*y->pval -_y) );
     }
     virtual bool inRect(double minx,double miny,double maxx,double maxy)const{
             return ( minx<= *x->pval && *x->pval <= maxx && miny <= *y->pval && *y->pval <= maxy );
@@ -216,9 +217,19 @@ struct lirep:public sketchObj {
     operator line2r ()const {
         return line2r(*beg,*end);
     }
-    virtual void move(double dx,double dy) {
-        beg->move(dx,dy);
-        end->move(dx,dy);
+    virtual void move(double dx,double dy) {        
+        if ( beg->x->pval == end->x->pval ){
+            if ( !beg->fixed ) beg->move(dx,dy);
+            if ( !end->fixed ) *(end->y->pval) += dy;
+        }
+        else if ( beg->y->pval == end->y->pval ){
+            if ( !beg->fixed ) beg->move(dx,dy);
+            if ( !end->fixed ) *(end->x->pval) += dx;
+        }
+        else{
+            if ( !beg->fixed ) beg->move(dx,dy);
+            if ( !end->fixed ) end->move(dx,dy);
+        }
     }
     double dist2point(double _x,double _y)const {
         double ax = *(end->x->pval) - *(beg->x->pval);
@@ -232,9 +243,9 @@ struct lirep:public sketchObj {
 
         double lproa = (lpx*ax+lpy*ay)/lena;
 
-        if ( lproa < 0 ) return 2*std::sqrt(lpx*lpx+lpy*lpy);
+        if ( lproa < 0 ) return std::sqrt(lpx*lpx+lpy*lpy);
 
-        if ( lproa > lena && ty == OT_SEGMENT ) return 2*(sqrt(ptl*ptl + (lproa-lena)*(lproa-lena)));
+        if ( lproa > lena && ty == OT_SEGMENT ) return (sqrt(ptl*ptl + (lproa-lena)*(lproa-lena)));
 
         return ptl;
     }
