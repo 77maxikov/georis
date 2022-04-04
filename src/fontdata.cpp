@@ -108,7 +108,7 @@ void georis::FontData::render_text(const char* text,TextJustify tj) {
      glMatrixMode(GL_MODELVIEW);
      glPushMatrix();
 
-     const float scaleFactor = 1.0f/4096/8;
+     const float scaleFactor = 1.0f/4096/12;
 
      // Calculate bbox width for rendered text
      const char *tmp = text;

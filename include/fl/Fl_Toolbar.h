@@ -12,8 +12,7 @@ class Fl_Toolbar : public Fl_Pack {
 public:
     // CTOR
     Fl_Toolbar(int X, int Y):Fl_Pack(X, Y, 0, TOOLBAR_HEIGHT) {
-        type(Fl_Pack::HORIZONTAL);    // horizontal packing of buttons
-        //type(Fl_Pack::VERTICAL);    // horizontal packing of buttons
+        type(Fl_Pack::HORIZONTAL);    // horizontal packing of buttons        
         box(FL_UP_FRAME);
         spacing(4);            // spacing between buttons
         end();

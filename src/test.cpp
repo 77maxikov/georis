@@ -20,10 +20,11 @@ int main(int argc,char *argv[]) {
 #else
 */
         Fl::visual(FL_DOUBLE|FL_INDEX);
-
-        georis::GeFLTKVisualizer vis;
+        int x,y,w,h;
+        Fl::screen_xywh(x,y,w,h);
+        georis::GeFLTKVisualizer vis(w,h);
         controller.setUI(&vis);
-        vis.setController(&controller);
+        vis.setController(&controller);        
         vis.show();
         if ( argc > 1 )
             controller.loadFrom(argv[1]);
