@@ -1,9 +1,0 @@
-Controller::showSelectionInfo: 0 total objects, selected 0
-  nPoints = 0
-  nLines = 0
-  nCircls = 0
-  nArcs = 0
-Core::addConstraint 2 objects
-Core::groupObj type = segment count 2
-Core::tryAddConstraint - added ortho between line (-0.132192,0.134143)->(-0.21484,-0.22912) and line (0.0165889,-0.0741371)->(0.312178,-0.141388)
-Core::addConstraint 0 tac
