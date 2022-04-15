@@ -15,8 +15,10 @@ georis::GeFLTKVisualizer::GeFLTKVisualizer(int W, int H, const char*L) : Fl_Doub
     Fl_Button *bu = _toolbar->AddButton("Новый",cbFileNew); bu->label("@+2filenew");
     bu = _toolbar->AddButton("Открыть",cbFileOpen); bu->label("@+2fileopen");
     bu = _toolbar->AddButton("Сохранить",cbFileSave); bu->label("@+2filesave");
-    //bu = _toolbar->AddButton("Отмена",cbUndo); bu->label("@+2undo");
-    //bu = _toolbar->AddButton("Повтор",cbRedo); bu->label("@+2redo");
+    m_undoBtn = _toolbar->AddButton("Отмена",cbUndo); m_undoBtn->label("@+2undo");m_undoBtn->deactivate();
+
+    m_redoBtn = _toolbar->AddButton("Повтор",cbRedo); m_redoBtn->label("@+2redo");
+
     _toolbar->addDivider();
     _modebuttons[IM_POINT]   = _toolbar->AddCheckButton("Точка",new Fl_Pixmap(drawPoint_xpm),new Fl_Pixmap(drawPoint_selected_xpm), cbDrawPoint,1);
     _modebuttons[IM_SEGMENT] = _toolbar->AddCheckButton("Отрезок",new Fl_Pixmap(drawSegment_xpm),new Fl_Pixmap(drawSegment_selected_xpm), cbDrawSegment,1);
@@ -64,10 +66,23 @@ void georis::GeFLTKVisualizer::setController(georis::Controller *ctrl) {
         _infowin->setController(ctrl);
     }
 }
+void georis::GeFLTKVisualizer::enableUndo(bool enable) {
+    if ( enable ) m_undoBtn->activate();
+    else m_undoBtn->deactivate();
+}
+void georis::GeFLTKVisualizer::enableRedo(bool enable){
+    if ( enable ) m_redoBtn->activate();
+    else m_redoBtn->deactivate();
+
+}
+
 int georis::GeFLTKVisualizer::handle(int event) {
     switch (event) {
     case FL_KEYBOARD:
         return processKeyboard(Fl::event_key());
+/*    case FL_KEYUP:
+        return processKeyboardUp(Fl::event_key());
+*/
     }
     return Fl_Double_Window::handle(event);
 }
@@ -86,8 +101,21 @@ void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
     _infowin->resize(5,_toolbar->h()+1,100, h - _toolbar->h()-1);
     _glWindow->resize(_infowin->w()+5,_toolbar->h()+1,w - (_infowin->w() + 5),h-_toolbar->h()-1);
 }
+/*int georis::GeFLTKVisualizer::processKeyboardUp(int key) {
+    if (m_controller) {
+        switch (key) {
+        case FL_SHIFT:
+            //m_controller->addSelected(false);
+            break;
+        default:{
+            MOOLOG << "GeFLTKVisualizer::processKeyboard key " << key << " released "<< std::endl;
+        }
+        }
+    }
+    _glWindow->redraw();
+    return 1;
+}*/
 int georis::GeFLTKVisualizer::processKeyboard(int key) {
-    //MOOLOG << "GeFLTKVisualizer::processKeyboard "<< key << " pressed" << std::endl;
     if (m_controller) {
         switch (key) {
         case FL_Escape: // ESC
@@ -97,8 +125,10 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
             setInputMode(IM_NONE);
             break;
         case FL_Delete: // DEL
-            if (m_controller)
-                m_controller->deleteSelected();
+            m_controller->deleteSelected();
+            break;
+        case FL_SHIFT:
+            //m_controller->addSelected(true);
             break;
         case 'q':
         case 'Q':
@@ -156,6 +186,9 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
             //if ( _input_mode == IM_NONE )
             m_controller->constrainSelected(georis::CT_TANGENT);
             break;
+        default:{
+            MOOLOG << "GeFLTKVisualizer::processKeyboard key " << key << " pressed "<< std::endl;
+        }
         }
     }
     _glWindow->redraw();
@@ -203,15 +236,12 @@ void georis::GeFLTKVisualizer::displayConstraint(DCType type, double value,const
     case georis::DCT_ANGLEDIM:
         _glWindow->drawAngleDimLine(param[0],param[1],param[2],param[3],param[4],param[5],buff,status);
         break;
-
-defaut:
-        ;
     }
 }
 
 void georis::GeFLTKVisualizer::cbFileNew(Fl_Widget*w, void*d) {
     ((GeFLTKVisualizer*)(w->parent()->parent()))->setInputMode(IM_NONE);
-    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->createNew();
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->createNewSketch();
 }
 
 void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
@@ -258,10 +288,10 @@ void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
     if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->saveTo(fnfc.filename());
 }
 void georis::GeFLTKVisualizer::cbUndo(Fl_Widget*w, void*d) {
-
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->undo();
 }
 void georis::GeFLTKVisualizer::cbRedo(Fl_Widget*w, void*d) {
-
+    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->redo();
 }
 
 

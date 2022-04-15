@@ -18,6 +18,8 @@ public:
         virtual void setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
                                  const std::vector< std::pair<UID,std::string> > &constrsSel,
                                  const std::vector<georis::ConstraintType>& constrsAvail) = 0;
+        virtual void enableUndo(bool) = 0;
+        virtual void enableRedo(bool) = 0;
 };
 }
 

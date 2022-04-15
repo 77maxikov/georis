@@ -24,7 +24,7 @@ georis::Controller::Controller() {
 georis::Controller::~Controller() {
 
 }
-void georis::Controller::createNew(){
+void georis::Controller::createNewSketch(){
     /*
     if ( m_uidActiveSketch != NOUID && m_bIsModified ){
         // save current
@@ -71,219 +71,381 @@ void georis::Controller::updateView() {
             m_ui->displayConstraint(c.second.type,c.second.value,c.second.param(),c.second.status);
         }
     }
+    m_ui->enableRedo(m_UR.canRedo());
+    m_ui->enableUndo(m_UR.canUndo());
 
     m_ui->reset();
 }
-void georis::Controller::addObject(georis::ObjectType type, const std::vector<double> &parame,const std::string &name){
-    MOOLOG << "Controller::addObject " << type;
+void georis::Controller::createObject(georis::ObjectType type, const std::vector<double> &parame){
+    MOOLOG << "Controller::createObject " << type;
     if ( !parame.empty() ) {
         MOOLOG << " with parameters";
         for (size_t k = 0; k< parame.size(); ++k)
             MOOLOG << ' ' << parame[k];
         MOOLOG << std::endl;
     }
+    std::vector<UID> newids;
+    RESCODE res = intCreateSimpleObj(type,parame,&newids);
+    if ( res != RC_OK ){
+        MOOLOG << "Controller::createObject failed creating simple obj " << res << std::endl;
+        return;
+    }
 
-
-    if ( isSimpleObj(type) ){
-        addSimpleObj(type,parame,name);
+    if ( isChildObj(type) ){
+        if ( m_memHighlights[0] == NOUID )
+            m_UR.addCommand(new AddChildObjectCommand( this,type,parame,m_objs[newids.front()].name,newids.front() ) );
+        else{
+            // Add implicit constraints
+            UID constrid{NOUID};
+            res = intAddConstraint(CT_COINCIDENT,{newids.front(),m_memHighlights[0]},&constrid);
+            if ( res != RC_OK ){
+                MOOLOG << "Controller::createObject failed creating implicit constraint" << std::endl;
+                return;
+            }
+            CompositeCommand* pcom = new CompositeCommand(this);
+            pcom->add(new AddChildObjectCommand( this,type,parame,m_objs[newids.front()].name,newids.front() ));
+            pcom->add(new AddConstraintCommand( this,constrid,{newids.front(),m_memHighlights[0]},CT_COINCIDENT,0,m_constrs[constrid].name ));
+            m_UR.addCommand( pcom );
+        }
     }
     else{
-        switch (type){
-        case OT_RECT:{
-            std::vector<UID> segids1;
-            std::vector<double> spar(4);
-            spar[0] = parame[0];
-            spar[1] = parame[1];
-            spar[2] = parame[2];
-            spar[3] = parame[1];
-            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids1) != RC_OK ) return;
-            std::vector<UID> cid(1,segids1[0]);
-            if ( addConstraint(CT_HORIZONTAL,cid) != RC_OK ) return;
-
-            std::vector<UID> segids2;
-            spar[0] = parame[2];
-            spar[1] = parame[1];
-            spar[2] = parame[2];
-            spar[3] = parame[3];
-            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids2) != RC_OK ) return;
-            cid[0] = segids2[0];
-            if ( addConstraint(CT_VERTICAL,cid) != RC_OK ) return;
-            cid[0] = segids1[2];
-            cid.push_back(segids2[1]);
-            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
-
-            spar[0] = parame[2];
-            spar[1] = parame[3];
-            spar[2] = parame[0];
-            spar[3] = parame[3];
-            std::vector<UID> segids3;
-            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids3) != RC_OK ) return;
-            cid.clear();
-            cid.push_back(segids3[0]);
-            if ( addConstraint(CT_HORIZONTAL,cid) != RC_OK ) return;
-            cid[0] = segids2[2];
-            cid.push_back(segids3[1]);
-            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
-
-            spar[0] = parame[0];
-            spar[1] = parame[3];
-            spar[2] = parame[0];
-            spar[3] = parame[1];
-            std::vector<UID> segids4;
-            if ( addSimpleObj(OT_SEGMENT,spar,std::string(),&segids4) != RC_OK ) return;
-            cid.clear();
-            cid.push_back(segids4[0]);
-            if ( addConstraint(CT_VERTICAL,cid) != RC_OK ) return;
-            cid[0] = segids3[2];
-            cid.push_back(segids4[1]);
-            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
-            cid[0] = segids4[2];
-            cid[1] = segids1[1];
-            if ( addConstraint(CT_COINCIDENT,cid) != RC_OK ) return;
+        //MOOLOG << "Controller::createObject added parent with UID " << uid << std::endl;
 
 
 
+        std::vector<georis::ObjectType> types(newids.size()); types[0] = type;
+        std::vector<std::vector<double> >  params(newids.size()); params[0] = parame;
+        std::vector<std::string> names(newids.size()); names[0] = m_objs[newids.front()].name;
 
-            break;
+        for (size_t k = 0 ;k < newids.size(); ++k){
+            size_t freedeg = 0;
+            res = m_core.queryObjInfo(newids[k],types[k],params[k],freedeg);
+            if ( res != RC_OK ) {
+                return;
+            }
+            names[k] = m_objs[newids[k]].name;
         }
-        case OT_RECT3P:{
-            break;
+        if ( m_memHighlights[0] == NOUID && m_memHighlights[1] == NOUID)
+            m_UR.addCommand(new AddParentObjectCommand(this,std::move(newids),std::move(types),std::move(params),std::move(names)) );
+        else{
+            std::unique_ptr<CompositeCommand> pcom(new CompositeCommand(this));
+            pcom->add(new AddParentObjectCommand(this,std::vector<UID>(newids),std::move(types),std::move(params),std::move(names)));
+
+            // Add implicit constraints
+            if ( m_memHighlights[0] != NOUID ){
+                switch(type){
+                case OT_LINE:
+                case OT_RAY:
+                case OT_SEGMENT:
+                case OT_CIRCLE:
+                case OT_ARC:{
+                    UID constrid{NOUID};
+                    RESCODE res = intAddConstraint(CT_COINCIDENT,{newids[1],m_memHighlights[0]},&constrid);
+                    if ( res != RC_OK) {
+                        MOOLOG << "Controller::createObject failed creating implicit constraint" << std::endl;
+                        return;
+                    }
+                    pcom->add(new AddConstraintCommand( this,constrid,{newids[1],m_memHighlights[0]},CT_COINCIDENT,0,m_constrs[constrid].name ));
+                    break;
+                }
+                default:
+                    ;
+                }
+            }
+
+            if ( m_memHighlights[1] != NOUID ){
+                assert(newids.size() > 2);
+                switch(type){
+                case OT_LINE:
+                case OT_RAY:
+                case OT_SEGMENT:
+                case OT_ARC:{
+                    UID constrid{NOUID};
+                    RESCODE res = intAddConstraint(CT_COINCIDENT,{newids[2],m_memHighlights[1]},&constrid);
+                    if ( res != RC_OK) {
+                        MOOLOG << "Controller::createObject failed creating implicit constraint" << std::endl;
+                        return;
+                    }
+                    pcom->add(new AddConstraintCommand( this,constrid,{newids[2],m_memHighlights[1]},CT_COINCIDENT,0,m_constrs[constrid].name ));
+                    break;
+                }
+                default:
+                    ;
+                }
+            }
+            m_UR.addCommand(pcom.get());
+            pcom.release();
         }
+    }
+
+    m_memHighlights[0] = NOUID;
+    m_memHighlights[1] = NOUID;
+}
+void georis::Controller::createComposite(georis::CompositeType type, const std::vector<double> &parame){
+    std::unique_ptr<CompositeCommand> pcom(new CompositeCommand(this));
+    switch (type){
+    case COT_RECT:{
+        std::vector<UID> segids1;
+        RESCODE res = intCreateSimpleObj(OT_SEGMENT,{parame[0],parame[1],parame[2],parame[1]},&segids1);
+        if ( res != RC_OK ) {
+            return;
         }
+        pcom->add(new AddParentObjectCommand(this,segids1[0]));
+
+        UID constrid{NOUID};
+        res = intAddConstraint( CT_HORIZONTAL,{segids1[0]}, &constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,{segids1[0]},CT_HORIZONTAL,0,m_constrs[constrid].name));
+
+
+        std::vector<UID> segids2;
+        res = intCreateSimpleObj(OT_SEGMENT,{parame[2],parame[1],parame[2],parame[3]},&segids2);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddParentObjectCommand(this,segids2[0]));
+
+
+        constrid = NOUID;
+        res = intAddConstraint(CT_VERTICAL,{segids2[0]},&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,{segids2[0]},CT_VERTICAL,0,m_constrs[constrid].name));
+
+
+        constrid = NOUID;
+        std::vector<UID> cid = {segids1[2],segids2[1]};
+        res = intAddConstraint(CT_COINCIDENT,cid,&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,cid,CT_COINCIDENT,0,m_constrs[constrid].name));
+
+
+        std::vector<UID> segids3;
+        res = intCreateSimpleObj(OT_SEGMENT,{parame[2], parame[3], parame[0], parame[3]},&segids3);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddParentObjectCommand(this,segids3[0]));
+
+
+        constrid = NOUID;
+        res = intAddConstraint(CT_HORIZONTAL,{segids3[0]},&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,{segids3[0]},CT_HORIZONTAL,0,m_constrs[constrid].name));
+
+        constrid = NOUID;
+        cid[0] = segids2[2];
+        cid[1] = segids3[1];
+        res = intAddConstraint(CT_COINCIDENT,cid,&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,cid,CT_COINCIDENT,0,m_constrs[constrid].name));
+
+        std::vector<UID> segids4;
+        res = intCreateSimpleObj(OT_SEGMENT,{parame[0],parame[3],parame[0],parame[1]},&segids4);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddParentObjectCommand(this,segids4[0]));
+
+
+        constrid = NOUID;
+        res = intAddConstraint(CT_VERTICAL,{segids4[0]},&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,{segids4[0]},CT_VERTICAL,0,m_constrs[constrid].name));
+
+        constrid = NOUID;
+        cid[0] = segids3[2];
+        cid[1] = segids4[1];
+        res = intAddConstraint(CT_COINCIDENT,cid,&constrid);
+        if ( res != RC_OK ){
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,cid,CT_COINCIDENT,0,m_constrs[constrid].name));
+
+
+        constrid = NOUID;
+        cid[0] = segids4[2];
+        cid[1] = segids1[1];
+        res = intAddConstraint(CT_COINCIDENT,cid,&constrid);
+        if ( res != RC_OK ) {
+            return;
+        }
+        pcom->add(new AddConstraintCommand(this,constrid,cid,CT_COINCIDENT,0,m_constrs[constrid].name));
+
+        m_UR.addCommand(pcom.get());
+        pcom.release();
+        break;
+    }
+    case COT_RECT3P:{
+        break;
+    }
     }
 
 }
-RESCODE georis::Controller::addSimpleObj(georis::ObjectType type, const std::vector<double> &parame,const std::string &name,std::vector<UID>* newids){
+
+RESCODE georis::Controller::intCreateSimpleObj(georis::ObjectType type,
+                                               const std::vector<double> &parame,
+                                               std::vector<UID>* pnewids){
     UID uid = NOUID;
     RESCODE res = m_core.addObject(type,parame,&uid);
     if ( res != RC_OK ){
-        MOOLOG << "Controller::addObject unsuccesful" << std::endl;
+        MOOLOG << "Controller::createObject unsuccesful" << std::endl;
         return res;
     }
-    MOOLOG << "Controller::addObject added parent with UID " << uid << std::endl;
 
     const size_t bufsize = 64;
     static char buf[bufsize];
 
-    if (name.empty()) { // Create object's name
-        m_lastObjNums[type]++;
-        switch(type) {
-        case OT_POINT:
-            snprintf(buf,bufsize,"Точка%d",m_lastObjNums[type]);
-            break;
-        case OT_LINE:
-            snprintf(buf,bufsize,"Прямая%d",m_lastObjNums[type]);
-            break;
-        case OT_RAY:
-            snprintf(buf,bufsize,"Луч%d",m_lastObjNums[type]);
-            break;
-        case OT_SEGMENT:
-            snprintf(buf,bufsize,"Отрезок%d",m_lastObjNums[type]);
-            break;
-        case OT_CIRCLE:
-            snprintf(buf,bufsize,"Окружность%d",m_lastObjNums[type]);
-            break;
-        case OT_ARC:
-            snprintf(buf,bufsize,"Дуга%d",m_lastObjNums[type]);
-            break;
-        default:
-            ;
-        }
-        m_objs[uid].name = buf;
+    // Create object's name
+    m_lastObjNums[type]++;
+    switch(type) {
+    case OT_POINT:
+        snprintf(buf,bufsize,"Точка%d",m_lastObjNums[type]);
+        break;
+    case OT_LINE:
+        snprintf(buf,bufsize,"Прямая%d",m_lastObjNums[type]);
+        break;
+    case OT_RAY:
+        snprintf(buf,bufsize,"Луч%d",m_lastObjNums[type]);
+        break;
+    case OT_SEGMENT:
+        snprintf(buf,bufsize,"Отрезок%d",m_lastObjNums[type]);
+        break;
+    case OT_CIRCLE:
+        snprintf(buf,bufsize,"Окружность%d",m_lastObjNums[type]);
+        break;
+    case OT_ARC:
+        snprintf(buf,bufsize,"Дуга%d",m_lastObjNums[type]);
+        break;
+    default:
+        ;
     }
-    else
-        m_objs[uid].name = name;
+    m_objs[uid].name = buf;
     m_objs[uid].status = 0;
-
-    std::vector<UID> chids;
-    res = m_core.getObjChilds(uid,chids);
-    if (res  != RC_OK ){
-        MOOLOG << "Controller::addObject can't get children of new object" << std::endl;
-        return res;
+    if ( pnewids ) {
+        pnewids->clear();
+        pnewids->push_back(uid);
     }
-
-    for (auto chuid: chids){
-        ObjectType ot;
-        res = m_core.getObjType(chuid,ot);
-
-        assert( res == RC_OK );
-
-        if ( ot == OT_POINT ){
-            m_lastObjNums[OT_POINT]++;
-            snprintf(buf,bufsize,"Точка%d",m_lastObjNums[OT_POINT]);
+    if ( !isChildObj(type) ){
+        std::vector<UID> chids;
+        res = m_core.getObjChilds(uid,chids);
+        if (res  != RC_OK ){
+            MOOLOG << "Controller::createObject can't get children of new object" << std::endl;
+            return res;
         }
-        m_objs[chuid].status = 0;
-        m_objs[chuid].name = buf;
-        MOOLOG << "Controller::addObject added child with UID " << chuid << std::endl;
-    }
 
-    // Add implicit constraints
+        std::vector<georis::ObjectType> types(1,type);
+        std::vector<std::vector<double> >  params(1,parame);
+        std::vector<std::string> names(1,m_objs[uid].name);
 
-    if ( m_memHighlights[0] != NOUID ){
-        switch(type){
-        case OT_POINT:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(uid);
-            cobjs.push_back(m_memHighlights[0]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        case OT_LINE:
-        case OT_RAY:
-        case OT_SEGMENT:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(chids[0]);
-            cobjs.push_back(m_memHighlights[0]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        case OT_CIRCLE:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(chids[0]);
-            cobjs.push_back(m_memHighlights[0]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        case OT_ARC:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(chids[0]);
-            cobjs.push_back(m_memHighlights[0]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        default:
-            ;
+        for (auto chuid: chids){
+            ObjectType ot;
+            std::vector<double> paramec;
+            size_t freedeg = 0;
+            res = m_core.queryObjInfo(chuid,ot,paramec,freedeg);
+            if ( res != RC_OK ) return res;
+
+            if ( ot == OT_POINT ){
+                ++m_lastObjNums[OT_POINT];
+                snprintf(buf,bufsize,"Точка%d",m_lastObjNums[OT_POINT]);
+            }
+            else return RC_RUNTIME_ERR;
+
+            m_objs[chuid].status = 0;
+            m_objs[chuid].name = buf;
+            MOOLOG << "Controller::createObject added child with UID " << chuid << std::endl;
+            if ( pnewids )
+                pnewids->push_back(chuid);
         }
     }
-
-    if ( m_memHighlights[1] != NOUID ){
-        switch(type){
-        case OT_LINE:
-        case OT_RAY:
-        case OT_SEGMENT:
-        case OT_CIRCLE:
-        case OT_ARC:{
-            std::vector<UID> cobjs;
-            cobjs.push_back(chids[1]);
-            cobjs.push_back(m_memHighlights[1]);
-            addConstraint(CT_COINCIDENT,cobjs);
-            break;
-        }
-        default:
-            ;
-        }
-    }
-    if ( newids != nullptr ){
-        newids->clear();
-        newids->push_back(uid);
-        for (auto cid:chids)
-            newids->push_back(cid);
-    }
-    m_memHighlights[0] = NOUID;
-    m_memHighlights[1] = NOUID;
     return RC_OK;
 }
-RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector<UID> &objects, double parame, const std::string &name,UID uid){
+
+RESCODE georis::Controller::intAddChildObj(ObjectType ot,
+                                        const std::vector<double>& parame,
+                                        const std::string &name,
+                                        UID* puid ){
+    if ( !isChildObj(ot) || puid == nullptr || *puid == NOUID ) return RC_INVALIDARG; // For now, only points can be children
+
+    RESCODE res = m_core.addObject(ot,parame,puid);
+    if ( res != RC_OK ) return res;
+
+    EInfo info = {MODE_NORMAL,name};
+    m_objs[*puid] = info;
+
+    return res;
+}
+RESCODE georis::Controller::intAddParentObj(ObjectType ot,
+                                         const std::vector<double>& parame,
+                                         const std::string &name,
+                                         std::vector<UID>& chuids,
+                                         UID* puid ){
+    if ( puid == nullptr || *puid == NOUID ) return RC_INVALIDARG;
+    // add parent connected to children
+    RESCODE res = m_core.addObject(ot,parame,puid, &chuids);
+    if ( res != RC_OK ) return res;
+    EInfo info = {MODE_NORMAL,name};
+    m_objs[*puid] = info;
+    return res;
+}
+RESCODE georis::Controller::intRemoveObj(UID uid ){
+    auto it = m_objs.find(uid);
+    if ( it == m_objs.end() ) return RC_NO_OBJ;
+
+    UID uidpar;
+    RESCODE res = m_core.getObjParent(uid,uidpar);
+    if ( res != RC_OK ) return res;
+    if ( uidpar != NOUID ) return RC_INVALIDARG;
+
+    std::vector<UID> subs;
+    m_core.getObjChilds(uid,subs);
+
+    // Prepare to update m_constrs
+    std::vector<UID> construids;
+    m_core.getObjConstraints(uid,construids);
+    for (auto cuid: construids){
+        auto cit = m_constrs.find(cuid);
+        m_constrs.erase(cit);
+    }
+
+    res = m_core.removeObject(uid);
+    if ( RC_OK != res ) return res;
+
+    for ( size_t s = 0 ; s < subs.size();++s )
+        m_objs.erase(subs[s]);
+    m_objs.erase(it);
+
+    for (size_t k = 0; k < m_selectedObjs.size() ;++k)
+        if ( uid == m_selectedObjs[k] ){
+            m_selectedObjs.erase(m_selectedObjs.begin() + k);
+            break;
+        }
+
+    return RC_OK;
+}
+RESCODE georis::Controller::intToggleAux(UID objid){
+    auto it = m_objs.find(objid);
+    if ( it == m_objs.end() ) return RC_NO_OBJ;
+    (*it).second.status ^= MODE_CONSTRUCTI;
+    return RC_OK;
+}
+
+RESCODE georis::Controller::intAddConstraint(ConstraintType type,
+                                          const std::vector<UID> &objects,
+                                          UID* puid,
+                                          double parame, const std::string &name){
+
     for (auto uo: objects ){
         std::vector<double> par;
         m_core.getObjParam(uo,par);
@@ -292,12 +454,15 @@ RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector
             MOOLOG << p << ", ";
         MOOLOG << std::endl;
     }
-    RESCODE res = m_core.addConstraint(type,objects,parame,&uid);
+    UID newid = NOUID;
+    if ( puid == nullptr )
+        puid = & newid;
+    RESCODE res = m_core.addConstraint(type,objects,parame,puid);
     if ( res != RC_OK ){
         MOOLOG << "Controller::addConstraint " << constrName(type) << " unsuccesful" << std::endl;
         return res;
     }
-    MOOLOG << "Controller::addConstraint added " << constrName(type) << " with UID " << uid << std::endl;
+    MOOLOG << "Controller::addConstraint added " << constrName(type) << " with UID " << *puid << std::endl;
 
     for (auto uo: objects ){
         std::vector<double> par;
@@ -309,8 +474,7 @@ RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector
     }
 
 
-
-    ECInfo & cinf = m_constrs[uid];
+    ECInfo & cinf = m_constrs[*puid];
     cinf.type = DCT_NONE;
 
     m_lastConstrNums[type]++;
@@ -498,6 +662,24 @@ RESCODE georis::Controller::addConstraint(ConstraintType type, const std::vector
     updateView();
     return RC_OK;
 }
+RESCODE georis::Controller::intRemoveConstraint(UID constrid){
+    RESCODE res = m_core.removeConstraint(constrid);
+    if ( res != RC_OK ){
+        MOOLOG << "Controller::removeConstraint unsuccesful" << std::endl;
+        return res;
+    }
+    auto it = m_constrs.find(constrid);
+    if ( it == m_constrs.end() ) return RC_INVALIDARG;
+    m_constrs.erase(it);
+/*
+    for (auto objid: objids ){
+        if ( m_objs[objid].status & MODE_FIXED )
+            m_objs[objid].status ^= MODE_FIXED;
+    }
+*/
+    updateView();
+    return RC_OK;
+}
 
 void georis::Controller::resetSelection() {
 //    MOOLOG << "Controller::resetSelection" << std::endl;
@@ -512,12 +694,12 @@ void georis::Controller::resetSelection() {
     showSelectionInfo();
 }
 size_t georis::Controller::selectByPoint(double x,double y,double precision) {
+    resetSelection();
     std::vector<UID> nearest;
     std::vector<double> dists;
     m_core.findObjInCirc(x,y,precision,nearest,&dists);
 
     if ( nearest.empty() ) {
-        resetSelection();        
         return 0;
     }
 
@@ -591,6 +773,7 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
 }
 
 void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
+    resetSelection();
     double xmin = std::min(x1,x2);
     double xmax = std::max(x1,x2);
     double ymin = std::min(y1,y2);
@@ -632,7 +815,7 @@ void georis::Controller::resetHighlight() {
         if (con.second.status &  MODE_HIGHLIGHTED )
            con.second.status &= ~MODE_HIGHLIGHTED;
 }
-double georis::Controller::findNearest(double x,double y,std::vector<UID> &objs)const{
+double georis::Controller::intFindNearest(double x,double y,std::vector<UID> &objs)const{
     double minDist = std::numeric_limits<double>::infinity();
     for (auto &con: m_constrs){
         if ( nullptr == con.second.sd ) continue;
@@ -653,7 +836,7 @@ void georis::Controller::highlightObj(double x,double y,double precision) {
     double minObjDist = m_core.findNearest(x,y,nearestObjs);
 
     std::vector<UID> nearestConstrs;
-    double minConstrDist = findNearest(x,y,nearestConstrs);
+    double minConstrDist = intFindNearest(x,y,nearestConstrs);
 
 
     if ( minObjDist <= minConstrDist ){
@@ -686,78 +869,95 @@ void georis::Controller::highlightObj(double x,double y,double precision) {
 }
 void georis::Controller::constrainSelected(ConstraintType type,double parame) {
     m_core.filterChildObj(m_selectedObjs);
-/*/
-    std::vector<UID> selected;
-    findObj(MODE_SELECTED, selected);
-    std::vector<UID> filtered;
-    filtered.reserve(selected.size());
-    std::vector<UID> subob;
-    for (size_t k = 0;k<selected.size();++k){
-        std::vector<UID> sub;
-        m_core.getObjChilds(selected[k],sub);
-        if (!sub.empty())
-            subob.insert(subob.end(),sub.begin(),sub.end());
-    }
-    std::set_difference(selected.begin(),selected.end(),subob.begin(),subob.end(),std::inserter(filtered,filtered.begin()));
-*/
-    if ( addConstraint(type,m_selectedObjs,parame) == RC_OK )
+    UID constrid = NOUID;
+    if ( intAddConstraint(type, m_selectedObjs, &constrid, parame) == RC_OK ){
+        m_UR.addCommand(new AddConstraintCommand(this,constrid,m_selectedObjs,type,parame,m_constrs[constrid].name));
         resetSelection();
+    }
 }
 void georis::Controller::deleteSelected() {
+   if ( m_selectedObjs.empty() ) return;
+   std::unique_ptr<CompositeCommand> pcom(new CompositeCommand(this));
+   bool bObjDeleted = false;
    for (size_t k = 0; k < m_selectedObjs.size(); ++k){
         UID uidpar;
-        m_core.getObjParent(m_selectedObjs[k],uidpar);
+        RESCODE res = m_core.getObjParent(m_selectedObjs[k],uidpar);
+        assert( RC_OK == res);
         if ( uidpar != NOUID ) continue;
-        std::vector<UID> subs;
-        m_core.getObjChilds(m_selectedObjs[k],subs);
-        // Prepare to update m_constrs
-        std::vector<UID> construids;
-        m_core.getObjConstraints(m_selectedObjs[k],construids);
+        std::vector<UID> chuids;
+        res = m_core.getObjChilds(m_selectedObjs[k],chuids);
 
-        m_core.removeObject(m_selectedObjs[k]);
-        for ( size_t s = 0 ; s < subs.size();++s )
-            m_objs.erase(subs[s]);
+        // Prepare to update m_constrs
+        std::vector<UID> constrids;
+        res = m_core.getObjConstraints(m_selectedObjs[k],constrids);
+        assert( RC_OK == res );
+        if ( !constrids.empty() )
+        for ( auto constrid : constrids )
+            pcom->add( new RemoveConstraintCommand(this,constrid) );
+
+        for ( auto chid: chuids ){
+            std::vector<UID> chconstrids;
+            m_core.getObjConstraints(chid,chconstrids);
+            for ( auto chconstrid:chconstrids ){
+                pcom->add( new RemoveConstraintCommand(this,chconstrid) );
+                m_constrs.erase(chconstrid);
+            }
+        }
+        for (auto constrid: constrids){
+            m_constrs.erase(constrid);
+        }
+        if ( chuids.empty() )
+            pcom->add(new RemoveChildObjectCommand(this,m_selectedObjs[k]));
+        else
+            pcom->add(new RemoveParentObjectCommand(this,m_selectedObjs[k]));
+
+        res = m_core.removeObject(m_selectedObjs[k]);
+        assert( RC_OK == res);
+        bObjDeleted = true;
+
+        for ( auto chid:chuids )
+            m_objs.erase(chid);
         m_objs.erase(m_selectedObjs[k]);
 
-        for (auto cuid: construids){
-            auto cit = m_constrs.find(cuid);
-            m_constrs.erase(cit);
-        }
-
     }
+    if ( bObjDeleted ){
+        m_UR.addCommand(pcom.get());
+        pcom.release();
+    }
+
     m_selectedObjs.clear();
 
     showSelectionInfo();
 }
+void georis::Controller::deleteConstraints(const std::vector<UID>& cids){
+    for ( auto constrid: cids ){
+        ConstraintType type;
+        std::vector<UID> objids;
+        double param = 0.0;
+        RESCODE res = m_core.queryConstrInfo(constrid,type,objids,&param);
+        if ( res != RC_OK ) return;
+
+        auto it = m_constrs.find(constrid);
+        if ( it == m_constrs.end() ) return;
+
+        m_UR.addCommand(new RemoveConstraintCommand(this,constrid,objids,type,param,(*it).second.name));
+
+        for (auto objid: objids ){
+            if ( m_objs[objid].status & MODE_FIXED )
+                m_objs[objid].status ^= MODE_FIXED;
+        }
+        m_core.removeConstraint(constrid);
+        m_constrs.erase(it);
+    }
+    updateView();
+}
+
 void georis::Controller::findObj(unsigned stateMask,std::vector<UID> &res){
     res.clear();
     for (auto &it : m_objs )
         if ( it.second.status & stateMask )
             res.push_back(it.first);
 }
-/*
-void georis::Controller::moveSelected(double dx,double dy) {
-    if ( !m_selectedObjs.empty() ){
-        if ( m_selectedObjs.size() == 1 ){
-            ObjectType ot = OT_NONE;
-            std::vector<double> parame;
-            size_t fd = 0;
-            m_core.queryObjInfo(m_selectedObjs.front(),ot,parame,fd );
-            if ( ot == OT_CIRCLE ){
-                // Project displacement onto readius vector to determine radius change
-                double rvx = m_xSel - parame[0];
-                double rvy = m_ySel - parame[1];
-                double dr = (dx*rvx + dy*rvy)/parame[2];
-                parame[2] += dr;
-                m_core.setObjParam(m_selectedObjs.front() ,parame );
-            }
-        }
-        else
-            m_core.moveObjects(m_selectedObjs,dx,dy);
-    }
-}
-*/
-
 void georis::Controller::processDrag(double x, double y) {
 
     if ( !m_selectedObjs.empty() ){
@@ -773,7 +973,7 @@ void georis::Controller::processDrag(double x, double y) {
                 m_core.setObjParam(m_selectedObjs.front() ,parame );
                 return;
             }
-            m_core.moveObjects(m_selectedObjs,x - m_xPrev,y - m_yPrev);
+            m_core.moveObjects(m_selectedObjs,x - m_xPrev,y - m_yPrev);            
         }
         else
             m_core.moveObjects(m_selectedObjs,x - m_xPrev,y - m_yPrev);
@@ -782,11 +982,12 @@ void georis::Controller::processDrag(double x, double y) {
 }
 
 void georis::Controller::toggleAuxSelected(){
-    std::vector<UID> selected;
-    findObj(MODE_SELECTED,selected);
-    for (auto objid: selected)
-        m_objs[objid].status ^= MODE_CONSTRUCTI;
-    resetSelection();
+    if ( !m_selectedObjs.empty() ){
+        for (auto objid: m_selectedObjs )
+            m_objs[objid].status ^= MODE_CONSTRUCTI;
+        m_UR.addCommand(new ToggleAuxCommand(this,m_selectedObjs));
+        resetSelection();
+    }
 }
 
 void georis::Controller::showSelectionInfo() {
@@ -941,6 +1142,19 @@ void georis::Controller::memHighlightsUp(double x,double y){
     if ( !highlighted.empty() )
         m_memHighlights[1] = highlighted[0];
 //    MOOLOG << "Controller::memHighlightsUp " << m_memHighlights[1] << std::endl;
+
+    if ( !m_selectedObjs.empty() && ( (x != m_xSel) || (y - m_ySel) ) ){
+        if ( m_selectedObjs.size() == 1 ){
+            ObjectType ot = OT_NONE;
+            std::vector<double> parame;
+            size_t fd = 0;
+            m_core.queryObjInfo(m_selectedObjs.front(),ot,parame,fd );
+            if ( ot != OT_CIRCLE )
+                m_UR.addCommand(new MoveCommand(this,m_selectedObjs,x - m_xSel, y - m_ySel ) );
+        }
+        else
+            m_UR.addCommand(new MoveCommand(this,m_selectedObjs,x - m_xSel, y - m_ySel ) );
+    }
 }
 void georis::Controller::highlightConstrainedBy(UID constrid,bool highlight){
     // find objects
@@ -1048,50 +1262,40 @@ void georis::Controller::loadFrom(const std::string &fname){
     unsigned attributes;
     while ( reader.loadObject(uid,name,ot,params,attributes,uidpar) != RC_NO_OBJ ){
         if ( maxuid < uid ) maxuid = uid;
-        res = m_core.addObject(ot,params,&uid);
 
+        res = intAddChildObj(ot,params,name,&uid);
         if ( res != RC_OK ){
-            MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
+            MOOLOG << "Controller::loadFrom:  couldn't add child object with uid " << uid << std::endl;
             return;
         }
-
-        EInfo info = {MODE_NORMAL,name};
-        m_objs[uid] = info;
-
-        if ( uidpar != NOUID ){
+        if ( uidpar != NOUID ) {
             // read until parent object is found
             // push child obj UID
             std::vector<UID> chuids;
             chuids.push_back(uid);
-
             UID par2load = uidpar;
+
             do {
                 unsigned attributes;
                 if ( (res = reader.loadObject(uid,name,ot,params,attributes,uidpar)) != RC_OK ){
-                    // ACHTUNG !! Not finished reading of parent and siblings
                     MOOLOG << "Controller::loadFrom:  not finished reading of parent " << par2load << " and sibling objs from file" << std::endl;
                     return;
                 }
                 if ( uidpar == par2load ){
-                    res = m_core.addObject(ot,params,&uid);
+                    res = intAddChildObj(ot,params,name,&uid);
                     if ( res != RC_OK ){
-                        MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
+                        MOOLOG << "Controller::loadFrom:  couldn't add child object with uid " << uid << std::endl;
                         return;
                     }
-                    EInfo info = {MODE_NORMAL,name};
-                    m_objs[uid] = info;
                     // push child objs
                     chuids.push_back(uid);
                 }
                 else if ( uid == par2load ){
-                    // add parent connected to children
-                    res = m_core.addObject(ot,params,&uid, &chuids);
+                    res = intAddParentObj(ot,params,name,chuids,&uid);
                     if ( res != RC_OK ){
                         MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
                         return;
                     }
-                    EInfo info = {MODE_NORMAL,name};
-                    m_objs[uid] = info;
                     break;
                 }
                 else{
@@ -1109,7 +1313,7 @@ void georis::Controller::loadFrom(const std::string &fname){
     double parame = 0;
     while ( (res = reader.loadConstraint(uid,name,ct,constrainedObjUIDs,parame) != RC_NO_OBJ )){
 
-        res = addConstraint(ct,constrainedObjUIDs,parame,name,uid);
+        res = intAddConstraint(ct,constrainedObjUIDs,&uid,parame,name);
         if ( res != RC_OK ){
             MOOLOG << "Controller::loadFrom: Can't add constraint " << uid << std::endl;
             return;
@@ -1143,3 +1347,174 @@ const char* georis::Controller::constrName(georis::ConstraintType ct){
     };
     return names[static_cast<size_t>(ct)];
 }
+void georis::Controller::undo(){
+    m_UR.undo();
+    updateView();
+}
+void georis::Controller::redo(){
+    m_UR.redo();
+    updateView();
+}
+
+georis::Controller::AddChildObjectCommand::AddChildObjectCommand(georis::Controller* c,const UID& objid):Command(c){
+    m_objid = objid;
+    size_t freedeg;
+    assert( RC_OK == m_controller->m_core.queryObjInfo(m_objid,m_type,m_parame,freedeg));
+    auto it = m_controller->m_objs.find(m_objid);
+    assert( it != m_controller->m_objs.end() );
+    m_name = (*it).second.name;
+}
+void georis::Controller::AddChildObjectCommand::redo(){
+    m_controller->intAddChildObj(m_type,m_parame,m_name,&m_objid);
+}
+void georis::Controller::AddChildObjectCommand::undo(){
+    m_controller->intRemoveObj(m_objid);
+}
+
+georis::Controller::RemoveChildObjectCommand::RemoveChildObjectCommand(Controller*c, const UID &objid):Command(c),m_objid(objid){
+    size_t freedeg = 0;
+    RESCODE res = m_controller->m_core.queryObjInfo(m_objid,m_type,m_parame,freedeg);
+    assert( RC_OK == res);
+    auto it = m_controller->m_objs.find(objid);
+    assert( it != m_controller->m_objs.end() );
+    m_name = (*it).second.name;
+}
+void georis::Controller::RemoveChildObjectCommand::redo(){
+    m_controller->intRemoveObj(m_objid);
+}
+void georis::Controller::RemoveChildObjectCommand::undo(){
+    m_controller->intAddChildObj(m_type,m_parame,m_name,&m_objid);
+}
+
+georis::Controller::AddParentObjectCommand::AddParentObjectCommand(georis::Controller* c,const UID& objid):Command(c){
+    m_uids.push_back(objid);
+    std::vector<UID> objchi;
+    RESCODE res = m_controller->m_core.getObjChilds(objid,objchi);
+    assert( RC_OK == res);
+    assert( !objchi.empty() );
+
+    m_types.resize( 1 + objchi.size() );
+    m_params.resize( 1 + objchi.size() );
+    m_names.resize( 1 + objchi.size() );
+    size_t freedeg = 0;
+    res = m_controller->m_core.queryObjInfo(objid,m_types.front(),m_params.front(),freedeg);
+    assert(RC_OK == res);
+    auto it = m_controller->m_objs.find(objid);
+    assert( it != m_controller->m_objs.end() );
+    m_names.front() = (*it).second.name;
+
+    for ( size_t k = 0; k< objchi.size();++k ){
+        m_uids.push_back(objchi[k]);
+        res = m_controller->m_core.queryObjInfo(objchi[k],m_types[k+1],m_params[k+1],freedeg);
+        assert( RC_OK == res);
+        auto it = m_controller->m_objs.find(objchi[k]);
+        assert( it != m_controller->m_objs.end() );
+        m_names[k+1] = (*it).second.name;
+    }
+}
+void georis::Controller::AddParentObjectCommand::redo(){
+    MOOLOG << "Controller::AddParentObjectCommand::redo" << std::endl;
+
+    for ( size_t k = 1; k < m_uids.size(); ++k  ){
+        // Add child objects
+        m_controller->intAddChildObj(m_types[k],m_params[k],m_names[k],&m_uids[k]);
+    }
+    std::vector<UID> chuids(m_uids.begin() +1 ,m_uids.end());
+    m_controller->intAddParentObj(m_types.front(),m_params.front(),m_names.front(),chuids,&(m_uids.front()));
+}
+void georis::Controller::AddParentObjectCommand::undo(){
+    MOOLOG << "Controller::AddParentObjectCommand::undo" << std::endl;
+    m_controller->intRemoveObj(m_uids.front());
+}
+
+georis::Controller::RemoveParentObjectCommand::RemoveParentObjectCommand(Controller*c, const UID &objid):Command(c){
+    m_uids.push_back(objid);
+    std::vector<UID> objchi;
+    RESCODE res = m_controller->m_core.getObjChilds(objid,objchi);
+    assert( RC_OK == res);
+    assert( !objchi.empty() );
+
+    m_types.resize( 1 + objchi.size() );
+    m_params.resize( 1 + objchi.size() );
+    m_names.resize( 1 + objchi.size() );
+    size_t freedeg = 0;
+    res = m_controller->m_core.queryObjInfo(objid,m_types.front(),m_params.front(),freedeg);
+    assert(RC_OK == res);
+    auto it = m_controller->m_objs.find(objid);
+    assert( it != m_controller->m_objs.end() );
+    m_names.front() = (*it).second.name;
+
+    for ( size_t k = 0; k< objchi.size();++k ){
+        m_uids.push_back(objchi[k]);
+        res = m_controller->m_core.queryObjInfo(objchi[k],m_types[k+1],m_params[k+1],freedeg);
+        assert( RC_OK == res);
+        auto it = m_controller->m_objs.find(objchi[k]);
+        assert( it != m_controller->m_objs.end() );
+        m_names[k+1] = (*it).second.name;
+    }
+}
+
+void georis::Controller::RemoveParentObjectCommand::redo(){
+     m_controller->intRemoveObj(m_uids.front());
+}
+void georis::Controller::RemoveParentObjectCommand::undo(){
+    MOOLOG << "Controller::RemoveParentObjectCommand::redo" << std::endl;
+
+    for ( size_t k = 1; k < m_uids.size(); ++k  ){
+        // Add child objects
+        m_controller->intAddChildObj(m_types[k],m_params[k],m_names[k],&m_uids[k]);
+    }
+    std::vector<UID> chuids(m_uids.begin() +1 ,m_uids.end());
+    m_controller->intAddParentObj(m_types.front(),m_params.front(),m_names.front(),chuids,&(m_uids.front()));
+}
+
+
+void georis::Controller::AddConstraintCommand::redo(){
+    MOOLOG << "Controller::AddConstraintCommand::redo" << std::endl;
+    m_controller->intAddConstraint(m_type,m_objids,&m_constrid,m_param,m_name);
+}
+void georis::Controller::AddConstraintCommand::undo(){
+    MOOLOG << "Controller::AddConstraintCommand::undo" << std::endl;
+    m_controller->intRemoveConstraint(m_constrid);
+}
+
+georis::Controller::RemoveConstraintCommand::RemoveConstraintCommand(Controller * c,UID constrid):Command(c),m_constrid(constrid){
+    RESCODE res = m_controller->m_core.queryConstrInfo(constrid,m_type,m_objids,&m_param);
+    assert( RC_OK == res);
+    auto it = m_controller->m_constrs.find(constrid);
+    assert( it != m_controller->m_constrs.end() );
+    m_name = (*it).second.name;
+}
+void georis::Controller::RemoveConstraintCommand::undo(){
+    MOOLOG << "Controller::RemoveConstraintCommand::undo" << std::endl;
+    m_controller->intAddConstraint(m_type,m_objids,&m_constrid,m_param,m_name);
+}
+void georis::Controller::RemoveConstraintCommand::redo(){
+    MOOLOG << "Controller::RemoveConstraintCommand::redo" << std::endl;
+    m_controller->intRemoveConstraint(m_constrid);
+}
+
+
+void georis::Controller::ToggleAuxCommand::redo(){
+    MOOLOG << "Controller::ToggleAuxCommand::redo" << std::endl;
+    for ( auto oa: m_objids )
+        m_controller->intToggleAux(oa);
+
+}
+void georis::Controller::ToggleAuxCommand::undo(){
+    MOOLOG << "Controller::ToggleAuxCommand::undo" << std::endl;
+    for ( auto oa: m_objids )
+        m_controller->intToggleAux(oa);
+}
+
+void georis::Controller::MoveCommand::redo(){
+    MOOLOG << "Controller::MoveCommand::redo" << std::endl;
+    m_controller->m_core.moveObjects(m_objids,m_dx,m_dy);
+}
+void georis::Controller::MoveCommand::undo(){
+    MOOLOG << "Controller::MoveCommand::undo" << std::endl;
+     m_controller->m_core.moveObjects(m_objids,-m_dx,-m_dy);
+}
+
+
+

@@ -70,6 +70,10 @@ HEADERS  += \
     ../include/controller.h \
     ../include/core.h \
     ../include/dimline.h \
+    ../include/fl/Fl_ImageButton.h \
+    ../include/fl/Fl_ImageCheckButton.h \
+    ../include/fl/Fl_InputWindow.h \
+    ../include/fl/Fl_Toolbar.h \
     ../include/fontdata.h \
     ../include/geommath.h \
     ../include/georis.h \
@@ -90,5 +94,8 @@ HEADERS  += \
     ../include/uid.h
 
 LIBS += -lfltk -lfltk_gl -lglut -lfreetype
+
+DISTFILES += \
+    ../todo.txt
 
 

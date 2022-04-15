@@ -1,0 +1,21 @@
+1. cmake build
+2. undo delete selection
+3. undo multipleconstraints
+4. angleround
+5. angletrim
+6. 3point rect
+7. right n-angle
+8. slots
+9. sparse solver
+10. rank in solver
+11. ps export
+12. pdf export
+13. movable constraint signs
+14. settings in file
+15. layers
+16. I18n
+17. splines
+18. contour ops and info
+19. shift + sel mode
+20. current pos display
+21. parameters table

@@ -32,6 +32,8 @@ public:
    virtual void setSelectionInfo(const std::vector<std::pair<UID,std::string> > &objsSel,
                             const std::vector< std::pair<UID,std::string> > &constrsSel,
                             const std::vector<georis::ConstraintType>& constrsAvail);
+   virtual void enableUndo(bool);
+   virtual void enableRedo(bool);
 
    static void cbFileNew(Fl_Widget*, void*);
    static void cbFileOpen(Fl_Widget*, void*);
@@ -53,6 +55,9 @@ private:
    GeGlWindow *_glWindow;
    Fl_Toolbar *_toolbar;
    GeInfoWindow *_infowin;
+   Fl_Button *m_undoBtn;
+   Fl_Button *m_redoBtn;
+
 
    int handle(int event);
    int processKeyboard(int key);

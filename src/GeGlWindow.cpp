@@ -114,36 +114,35 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
             }
             break;
         case FL_RELEASE:
-            if ( m_input_mode != georis::IM_NONE && m_controller )
-                if (m_controller) m_controller->memHighlightsUp(xCur,yCur);
+            if (m_controller) m_controller->memHighlightsUp(xCur,yCur);
 
             switch (m_input_mode) {
             case georis::IM_POINT:
-                if (m_controller) {
-                    m_controller->addObject(georis::OT_POINT,{xCur,yCur});
+                if ( m_controller ) {
+                    m_controller->createObject(georis::OT_POINT,{xCur,yCur});
                     //LOG << "GeGlWindow::processMouse added point, uid = " << uid << std::endl;
                 }
                 break;
             case georis::IM_LINE:
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
-                    if (m_controller) {
-                        m_controller->addObject(georis::OT_LINE,{m_coo[2],m_coo[3],xCur,yCur});
+                    if ( m_controller ) {
+                        m_controller->createObject(georis::OT_LINE,{m_coo[2],m_coo[3],xCur,yCur});
                         //LOG << "GeGlWindow::processMouse added line, uid = " << uid << std::endl;
                     }
                 m_state = 0;
                 break;
             case georis::IM_RAY:
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
-                    if (m_controller) {
-                        m_controller->addObject(georis::OT_RAY,{m_coo[2],m_coo[3],xCur,yCur});
+                    if ( m_controller ) {
+                        m_controller->createObject(georis::OT_RAY,{m_coo[2],m_coo[3],xCur,yCur});
                         //LOG << "GeGlWindow::processMouse added ray, uid = " << uid << std::endl;
                     }
                 m_state = 0;
                 break;
             case georis::IM_SEGMENT:
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
-                    if (m_controller) {
-                        m_controller->addObject(georis::OT_SEGMENT,{m_coo[2],m_coo[3],xCur,yCur});
+                    if ( m_controller ) {
+                        m_controller->createObject(georis::OT_SEGMENT,{m_coo[2],m_coo[3],xCur,yCur});
                         //LOG << "GeGlWindow::processMouse added segment, uid = " << uid << std::endl;
                     }
                 m_state = 0;
@@ -151,9 +150,9 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
             case georis::IM_CIRCLE:{
                 double r  = sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur));
                 if ( r > 2*minPixelRes())
-                    if ( m_controller != nullptr ) {
+                    if ( m_controller ) {
                         m_coo[4] = m_coo[2];m_coo[5] = m_coo[3];
-                        m_controller->addObject(georis::OT_CIRCLE,{m_coo[2],m_coo[3],r});
+                        m_controller->createObject(georis::OT_CIRCLE,{m_coo[2],m_coo[3],r});
                         //LOG << "GeGlWindow::processMouse added circle, uid = " << uid << std::endl;
                     }
                 m_state = 0;
@@ -167,12 +166,12 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
                     m_state = 2;
                     break;
                 case 3:{
-                    if ( m_controller != nullptr ) {
+                    if ( m_controller ) {
                         if ( m_coo[7] > 0 ) {
-                            m_controller->addObject(georis::OT_ARC,{m_coo[2],m_coo[3],m_coo[4],m_coo[5], m_coo[0],m_coo[1]});
+                            m_controller->createObject(georis::OT_ARC,{m_coo[2],m_coo[3],m_coo[4],m_coo[5], m_coo[0],m_coo[1]});
                         }
                         else{
-                            m_controller->addObject(georis::OT_ARC,{m_coo[2],m_coo[3], m_coo[0],m_coo[1],m_coo[4],m_coo[5]});
+                            m_controller->createObject(georis::OT_ARC,{m_coo[2],m_coo[3], m_coo[0],m_coo[1],m_coo[4],m_coo[5]});
                         }
                     }
                     m_state = 0;
@@ -183,16 +182,13 @@ void GeGlWindow::processMouse(int button, int state, int x, int y) {
             }
             case georis::IM_RECT:{
                 if ( sqrt((m_coo[2] - xCur)*(m_coo[2] - xCur) + (m_coo[3] - yCur)*(m_coo[3] - yCur)) > 2*minPixelRes())
-                    if (m_controller) {
-                        std::vector<double> tmp(4);
-                        tmp[0] = m_coo[2]; tmp[1] = m_coo[3];tmp[2] = xCur; tmp[3] = yCur;
-                        m_controller->addObject(georis::OT_RECT,tmp);
-                    }
+                    if ( m_controller )
+                        m_controller->createComposite(georis::COT_RECT,{m_coo[2], m_coo[3], xCur, yCur});
                 m_state = 0;
                 break;
             }
             case georis::IM_NONE:
-                if ( (m_controller != nullptr) && (std::sqrt((m_coo[2]-xCur)*(m_coo[2]-xCur) + (m_coo[3]-yCur)*(m_coo[3]-yCur)) > 2*minPixelRes()) )
+                if ( m_controller && (std::sqrt((m_coo[2]-xCur)*(m_coo[2]-xCur) + (m_coo[3]-yCur)*(m_coo[3]-yCur)) > 2*minPixelRes()) )
                     m_controller->selectByRect( m_coo[2],m_coo[3],xCur,yCur);
                 m_state = 0;
             }
