@@ -60,7 +60,8 @@ private:
 
 
    int handle(int event);
-   int processKeyboard(int key);
+   int processKeyboardUp(int key);
+   int processKeyboardDown(int key);
    void setInputMode(InputMode mode);
 
    map<InputMode,Fl_ImageCheckButton*> _modebuttons;

@@ -79,10 +79,9 @@ void georis::GeFLTKVisualizer::enableRedo(bool enable){
 int georis::GeFLTKVisualizer::handle(int event) {
     switch (event) {
     case FL_KEYBOARD:
-        return processKeyboard(Fl::event_key());
-/*    case FL_KEYUP:
+        return processKeyboardDown(Fl::event_key());
+    case FL_KEYUP:
         return processKeyboardUp(Fl::event_key());
-*/
     }
     return Fl_Double_Window::handle(event);
 }
@@ -101,11 +100,13 @@ void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
     _infowin->resize(5,_toolbar->h()+1,100, h - _toolbar->h()-1);
     _glWindow->resize(_infowin->w()+5,_toolbar->h()+1,w - (_infowin->w() + 5),h-_toolbar->h()-1);
 }
-/*int georis::GeFLTKVisualizer::processKeyboardUp(int key) {
+int georis::GeFLTKVisualizer::processKeyboardUp(int key) {
     if (m_controller) {
         switch (key) {
         case FL_SHIFT:
-            //m_controller->addSelected(false);
+        case FL_Shift_L:
+        case FL_Shift_R:
+            m_controller->addSelected(false);
             break;
         default:{
             MOOLOG << "GeFLTKVisualizer::processKeyboard key " << key << " released "<< std::endl;
@@ -114,8 +115,8 @@ void georis::GeFLTKVisualizer::resize(int x, int y, int w, int h){
     }
     _glWindow->redraw();
     return 1;
-}*/
-int georis::GeFLTKVisualizer::processKeyboard(int key) {
+}
+int georis::GeFLTKVisualizer::processKeyboardDown(int key) {
     if (m_controller) {
         switch (key) {
         case FL_Escape: // ESC
@@ -128,7 +129,9 @@ int georis::GeFLTKVisualizer::processKeyboard(int key) {
             m_controller->deleteSelected();
             break;
         case FL_SHIFT:
-            //m_controller->addSelected(true);
+        case FL_Shift_L:
+        case FL_Shift_R:
+            m_controller->addSelected(true);
             break;
         case 'q':
         case 'Q':

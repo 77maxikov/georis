@@ -19,11 +19,16 @@ const double georis::Controller::_sel_precision = 0.1;
 
 georis::Controller::Controller() {
     m_uidActiveSketch = NOUID;
+    m_bAddSelected = false;
 }
 
 georis::Controller::~Controller() {
 
 }
+void georis::Controller::addSelected(bool flag){
+    m_bAddSelected = flag;
+}
+
 void georis::Controller::createNewSketch(){
     /*
     if ( m_uidActiveSketch != NOUID && m_bIsModified ){
@@ -694,7 +699,8 @@ void georis::Controller::resetSelection() {
     showSelectionInfo();
 }
 size_t georis::Controller::selectByPoint(double x,double y,double precision) {
-    resetSelection();
+    if ( !m_bAddSelected)
+        resetSelection();
     std::vector<UID> nearest;
     std::vector<double> dists;
     m_core.findObjInCirc(x,y,precision,nearest,&dists);
@@ -773,7 +779,7 @@ size_t georis::Controller::selectByPoint(double x,double y,double precision) {
 }
 
 void georis::Controller::selectByRect(double x1,double y1,double x2,double y2) {
-    resetSelection();
+    if ( !m_bAddSelected) resetSelection();
     double xmin = std::min(x1,x2);
     double xmax = std::max(x1,x2);
     double ymin = std::min(y1,y2);

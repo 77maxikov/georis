@@ -19,6 +19,7 @@ public:
     void createObject(ObjectType type, const std::vector<double> &parame); //URok
     void createComposite(CompositeType type, const std::vector<double> &parame); // URok
 
+    void addSelected(bool flag);
     size_t selectByPoint(double x,double y,double precision = 0.01);
     void selectByRect(double x1,double y1,double x2,double y2);
     void resetSelection();
@@ -62,6 +63,7 @@ private:
     double m_xSel, m_ySel;
     double m_xPrev, m_yPrev;
     std::vector<UID> m_selectedObjs;
+    bool m_bAddSelected;
 
     struct EInfo{
         unsigned status;

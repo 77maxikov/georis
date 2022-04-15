@@ -16,6 +16,5 @@
 16. I18n
 17. splines
 18. contour ops and info
-19. shift + sel mode
 20. current pos display
 21. parameters table
