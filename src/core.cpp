@@ -332,7 +332,7 @@ RESCODE georis::Core::removeObject(UID remUID) {
     case OT_NONE:
     default:
         ;
-    }
+    }    
     MOOLOG << "Core::removeObject: after - objects " << m_objects.size() << " parameters " << _params.size() << std::endl;
     return RC_OK;
 }
@@ -433,9 +433,13 @@ RESCODE georis::Core::getObjChilds(UID uid,std::vector<UID>&uids)const {
     return RC_OK;
 }
 RESCODE georis::Core::getObjParent(UID uid,UID &par)const{
-    for ( auto &obj : m_objects)
-        if ( obj.second.hasChild(uid) ) { par = obj.first; return RC_OK;}
     par = NOUID;
+    bool objFound = false;
+    for ( auto &obj : m_objects){
+        if ( obj.first == uid ) objFound = true;
+        if ( obj.second.hasChild(uid) ) { par = obj.first; return RC_OK;}
+    }
+    if ( objFound ) return RC_OK;
     return RC_NO_OBJ;
 }
 RESCODE georis::Core::getObjConstraints(UID uid,std::vector<UID>& res)const {
@@ -1050,6 +1054,7 @@ RESCODE georis::Core::removeConstraint(UID id2rem) {
     }
     if ( !equalityGroups.empty()){
         m_constrGroups[numGroup].updateEqualParamOrigVals(equalityGroups);
+        m_constrGroups[numGroup].unlinkEqualParams(equalityGroups);
     }
 
     // clear constraint from linked objects
