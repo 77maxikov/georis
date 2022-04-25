@@ -22,7 +22,7 @@ public:
     RESCODE setActiveSketch(UID);
     RESCODE removeSketch(UID);
 
-    RESCODE addObject(ObjectType type, const std::vector<double>&paramProxy,UID *puid = nullptr,std::vector<UID> *pchuids = nullptr);
+    RESCODE addObject(ObjectType type, const std::vector<double>&parame,UID *puid = nullptr,std::vector<UID> *pchuids = nullptr);
     RESCODE removeObject(UID);
 
     // enumerate objects on active sketch
@@ -100,10 +100,9 @@ private:
         std::set<paramProxy*> constants;
 
         constrGroup():unsolved(true){}
-        std::vector<paramProxy*> getAllParams()const;
-        std::vector<paramProxy*> getTunableParams()const;
 
         std::vector<std::set<paramProxy*> > groupEqParams()const;
+        void operator+=(const constrGroup&);
         void linkEqualParams(std::vector<std::set<paramProxy*> >&);
         void unlinkEqualParams(std::vector<std::set<paramProxy*> >&);
         void updateEqualParamOrigVals(std::vector<std::set<paramProxy*> >&);

@@ -76,6 +76,7 @@ void georis::Controller::updateView() {
             m_ui->displayConstraint(c.second.type,c.second.value,c.second.param(),c.second.status);
         }
     }
+    //showSelectionInfo();
     m_ui->enableRedo(m_UR.canRedo());
     m_ui->enableUndo(m_UR.canUndo());
 
@@ -681,8 +682,7 @@ RESCODE georis::Controller::intRemoveConstraint(UID constrid){
         if ( m_objs[objid].status & MODE_FIXED )
             m_objs[objid].status ^= MODE_FIXED;
     }
-*/
-    updateView();
+*/    
     return RC_OK;
 }
 
@@ -874,11 +874,49 @@ void georis::Controller::highlightObj(double x,double y,double precision) {
 
 }
 void georis::Controller::constrainSelected(ConstraintType type,double parame) {
+    if ( m_selectedObjs.empty() ) return;
     m_core.filterChildObj(m_selectedObjs);
-    UID constrid = NOUID;
-    if ( intAddConstraint(type, m_selectedObjs, &constrid, parame) == RC_OK ){
-        m_UR.addCommand(new AddConstraintCommand(this,constrid,m_selectedObjs,type,parame,m_constrs[constrid].name));
+    switch (type){
+    case CT_COLLINEAR:
+    case CT_CONCENTRIC:
+    case CT_EQUAL:
+    case CT_PARALLEL:{
+        if ( m_selectedObjs.size() < 1 ){
+            MOOLOG << "Controller::constrainSelected - not enough selected " << std::endl;
+            return;
+        }
+        std::unique_ptr<CompositeCommand> pcom(new CompositeCommand(this));
+        for (size_t k = 1;k < m_selectedObjs.size();++k){
+            UID constrid = NOUID;
+            if ( intAddConstraint(type, {m_selectedObjs[k-1],m_selectedObjs[k]}, &constrid, parame) != RC_OK ) return;
+            pcom->add(new AddConstraintCommand(this,constrid,{m_selectedObjs[k-1],m_selectedObjs[k]},type,parame,m_constrs[constrid].name));
+        }
+        m_UR.addCommand(pcom.get());
+        pcom.release();
         resetSelection();
+        break;
+    }
+    case CT_FIX:
+    case CT_HORIZONTAL:
+    case CT_VERTICAL:{
+        std::unique_ptr<CompositeCommand> pcom(new CompositeCommand(this));
+        for (auto objid:m_selectedObjs){
+            UID constrid = NOUID;
+            if ( intAddConstraint(type, {objid}, &constrid, parame) != RC_OK ) return;
+            pcom->add(new AddConstraintCommand(this,constrid,{objid},type,parame,m_constrs[constrid].name));
+        }
+        m_UR.addCommand(pcom.get());
+        pcom.release();
+        resetSelection();
+        break;
+    }
+    default:{
+        UID constrid = NOUID;
+        if ( intAddConstraint(type, m_selectedObjs, &constrid, parame) == RC_OK ){
+            m_UR.addCommand(new AddConstraintCommand(this,constrid,m_selectedObjs,type,parame,m_constrs[constrid].name));
+            resetSelection();
+        }
+    }
     }
 }
 void georis::Controller::deleteSelected() {
@@ -892,7 +930,7 @@ void georis::Controller::deleteSelected() {
         if ( uidpar != NOUID ) continue;
         std::vector<UID> chuids;
         res = m_core.getObjChilds(m_selectedObjs[k],chuids);
-
+        assert(res == RC_OK);
         // Prepare to update m_constrs
         std::vector<UID> constrids;
         res = m_core.getObjConstraints(m_selectedObjs[k],constrids);
@@ -948,14 +986,16 @@ void georis::Controller::deleteConstraints(const std::vector<UID>& cids){
 
         m_UR.addCommand(new RemoveConstraintCommand(this,constrid,objids,type,param,(*it).second.name));
 
+        highlightConstrainedBy(constrid,false);
         for (auto objid: objids ){
             if ( m_objs[objid].status & MODE_FIXED )
                 m_objs[objid].status ^= MODE_FIXED;
         }
-        m_core.removeConstraint(constrid);
-        m_constrs.erase(it);
+
+
+        intRemoveConstraint(constrid);
     }
-    updateView();
+    showSelectionInfo();
 }
 
 void georis::Controller::findObj(unsigned stateMask,std::vector<UID> &res){
