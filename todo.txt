@@ -18,3 +18,5 @@
 18. contour ops and info
 20. current pos display
 21. parameters table
+22. error messages
+23. editable object parameters
