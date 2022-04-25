@@ -4,6 +4,8 @@
 #include "FL/Fl_Multi_Browser.H"
 #include "FL/Fl_Hold_Browser.H"
 #include "Fl_Toolbar.h"
+#include "Fl_HoldBroWdel.h"
+
 #include <map>
 #include <vector>
 #include <string>
@@ -45,7 +47,9 @@ private:
    georis::Controller *m_controller;
 
    Fl_Multi_Browser *m_pBrowserSelected;
-   Fl_Hold_Browser *m_pBrowserComCon;
+//   Fl_Hold_Browser *m_pBrowserComCon;
+   Fl_HoldBroWDel *m_pBrowserComCon;
+
 
    Fl_Toolbar *m_pActionToolbar;
    Fl_Button *m_pToggleAuxButton;

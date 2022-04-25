@@ -22,9 +22,10 @@ GeInfoWindow::GeInfoWindow(int x,int y,int w,int h,const char *l):Fl_Window(x,y,
     la->label("Связи");
     la->labelsize(10);
 
-    m_pBrowserComCon = new Fl_Hold_Browser(3,97,w-6,60);
+    m_pBrowserComCon = new Fl_HoldBroWDel(3,97,w-6,60);
     m_pBrowserComCon->callback(cbSelectConstr);
     m_pBrowserComCon->when(FL_ENTER);
+    m_pBrowserComCon->setDeleteCb(cbDeleteConstr);
 
     m_pBrowserComCon->textsize(10);
     //resizable(*m_pBrowserComCon);
@@ -100,7 +101,17 @@ void GeInfoWindow::cbSelectConstr(Fl_Widget *w, void *data) {
     if ( index > 0 && ((GeInfoWindow*)(w->parent()))->m_controller != nullptr ){
         const std::vector<UID> &constrids = ((GeInfoWindow*)(w->parent()))->m_currentConstraints;
         for  (int k = 0; k < constrids.size(); ++k )
-            ((GeInfoWindow*)(w->parent()))->m_controller->highlightConstrainedBy( constrids[k], (k==(index-1))/* && browser->selected(index)*/ );
+            if ( k != (index -1) )
+                ((GeInfoWindow*)(w->parent()))->m_controller->highlightConstrainedBy( constrids[k], false );
+        ((GeInfoWindow*)(w->parent()))->m_controller->highlightConstrainedBy( constrids[index-1], true);
+    }
+}
+void GeInfoWindow::cbDeleteConstr(Fl_Widget *w, void *data) {
+    Fl_HoldBroWDel *browser = (Fl_HoldBroWDel*)w;
+    int index = browser->value();            // get index of selected item
+    if ( index > 0 && ((GeInfoWindow*)(w->parent()))->m_controller != nullptr ){
+        const std::vector<UID> &constrids = ((GeInfoWindow*)(w->parent()))->m_currentConstraints;
+        ((GeInfoWindow*)(w->parent()))->m_controller->deleteConstraints( {constrids[index-1]} );
         ((GeInfoWindow*)(w->parent()))->m_controller->updateView();
     }
 }
