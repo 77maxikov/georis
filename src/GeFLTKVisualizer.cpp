@@ -264,9 +264,9 @@ void georis::GeFLTKVisualizer::cbFileOpen(Fl_Widget*w, void*d) {
         break;  // CANCEL
     default:
         MOOLOG << "PICKED: " << fnfc.filename() << std::endl;
+        if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->loadFrom(fnfc.filename());
         break;  // FILE CHOSEN
     }
-    if (((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller) ((GeFLTKVisualizer*)(w->parent()->parent()))->m_controller->loadFrom(fnfc.filename());
 }
 
 void georis::GeFLTKVisualizer::cbFileSave(Fl_Widget*w, void*d) {
