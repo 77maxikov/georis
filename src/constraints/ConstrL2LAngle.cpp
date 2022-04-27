@@ -15,6 +15,14 @@ double georis::ConstrL2LAngle::error()const{
 
     if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 1!");
     if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 2!");
+
+    // Check if we have common point for lines
+    if ( l11x->pval == l22x->pval && l11y->pval == l22y->pval){
+        a2x *= -1; a2y *= -1;
+    }
+    if ( l12x->pval == l21x->pval && l12y->pval == l21y->pval){
+        a1x *= -1; a1y *= -1;
+    }
     double c = a1x*a2x + a1y*a2y;
     double s = a1x*a2y - a1y*a2x;
 
@@ -28,6 +36,14 @@ double georis::ConstrL2LAngle::grad(const paramProxy *var)const{
 
     if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 1!");
     if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 2!");
+
+    // Check if we have common point for lines
+    if ( l11x->pval == l22x->pval && l11y->pval == l22y->pval){
+        a2x *= -1; a2y *= -1;
+    }
+    if ( l12x->pval == l21x->pval && l12y->pval == l21y->pval){
+        a1x *= -1; a1y *= -1;
+    }
     double c = a1x*a2x + a1y*a2y;
     double s = a1x*a2y - a1y*a2x;
 
