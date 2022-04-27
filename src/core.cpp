@@ -1622,11 +1622,14 @@ void georis::Core::constrainEntities(const std::vector<UID>& objids, constrInfo&
             UID parentid = NOUID;
             RESCODE res = getObjParent(objid,parentid);
             assert( res == RC_OK);
-            if ( parentid != NOUID ) numGroup = findConstrGroupByObjID(parentid);
-            else numGroup = findConstrGroupByObjID(objid);
-            if ( numGroup < 0 ) {// new constrgroup to add
-                m_constrGroups.push_back(constrGroup());
-                numGroup = m_constrGroups.size() - 1;
+            if ( parentid != NOUID )
+                numGroup = findConstrGroupByObjID(parentid);
+            if ( numGroup < 0 ) {
+                numGroup = findConstrGroupByObjID(objid);
+                if ( numGroup < 0 ) {// new constrgroup to add
+                    m_constrGroups.push_back(constrGroup());
+                    numGroup = m_constrGroups.size() - 1;
+                }
             }
             // don't add fixed twice
             for (auto &constr: m_constrGroups[numGroup].constraints )
