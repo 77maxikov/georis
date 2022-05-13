@@ -381,13 +381,14 @@ RESCODE georis::Controller::intCreateSimpleObj(georis::ObjectType type,
 RESCODE georis::Controller::intAddChildObj(ObjectType ot,
                                         const std::vector<double>& parame,
                                         const std::string &name,
-                                        UID* puid ){
+                                        UID* puid,
+                                        unsigned attributes){
     if ( !isChildObj(ot) || puid == nullptr || *puid == NOUID ) return RC_INVALIDARG; // For now, only points can be children
 
     RESCODE res = m_core.addObject(ot,parame,puid);
     if ( res != RC_OK ) return res;
 
-    EInfo info = {MODE_NORMAL,name};
+    EInfo info = {attributes,name};
     m_objs[*puid] = info;
 
     return res;
@@ -396,12 +397,13 @@ RESCODE georis::Controller::intAddParentObj(ObjectType ot,
                                          const std::vector<double>& parame,
                                          const std::string &name,
                                          std::vector<UID>& chuids,
-                                         UID* puid ){
+                                         UID* puid,
+                                         unsigned attributes){
     if ( puid == nullptr || *puid == NOUID ) return RC_INVALIDARG;
     // add parent connected to children
     RESCODE res = m_core.addObject(ot,parame,puid, &chuids);
     if ( res != RC_OK ) return res;
-    EInfo info = {MODE_NORMAL,name};
+    EInfo info = {attributes,name};
     m_objs[*puid] = info;
     return res;
 }
@@ -1309,7 +1311,7 @@ void georis::Controller::loadFrom(const std::string &fname){
     while ( reader.loadObject(uid,name,ot,params,attributes,uidpar) != RC_NO_OBJ ){
         if ( maxuid < uid ) maxuid = uid;
 
-        res = intAddChildObj(ot,params,name,&uid);
+        res = intAddChildObj(ot,params,name,&uid,attributes);
         if ( res != RC_OK ){
             MOOLOG << "Controller::loadFrom:  couldn't add child object with uid " << uid << std::endl;
             return;
@@ -1328,7 +1330,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                     return;
                 }
                 if ( uidpar == par2load ){
-                    res = intAddChildObj(ot,params,name,&uid);
+                    res = intAddChildObj(ot,params,name,&uid,attributes);
                     if ( res != RC_OK ){
                         MOOLOG << "Controller::loadFrom:  couldn't add child object with uid " << uid << std::endl;
                         return;
@@ -1337,7 +1339,7 @@ void georis::Controller::loadFrom(const std::string &fname){
                     chuids.push_back(uid);
                 }
                 else if ( uid == par2load ){
-                    res = intAddParentObj(ot,params,name,chuids,&uid);
+                    res = intAddParentObj(ot,params,name,chuids,&uid,attributes);
                     if ( res != RC_OK ){
                         MOOLOG << "Controller::loadFrom:  couldn't add object with uid " << uid << std::endl;
                         return;

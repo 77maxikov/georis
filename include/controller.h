@@ -105,8 +105,8 @@ private:
 
     RESCODE intCreateSimpleObj(ObjectType type, const std::vector<double> &parame,std::vector<UID>* newids = nullptr);
 
-    RESCODE intAddChildObj(ObjectType type, const std::vector<double>& parame,const std::string &name, UID* puid = nullptr);
-    RESCODE intAddParentObj(ObjectType type, const std::vector<double>& parame,const std::string &name,std::vector<UID>& chuids, UID* puid = nullptr );
+    RESCODE intAddChildObj(ObjectType type, const std::vector<double>& parame,const std::string &name, UID* puid = nullptr,unsigned attributes = 0);
+    RESCODE intAddParentObj(ObjectType type, const std::vector<double>& parame,const std::string &name,std::vector<UID>& chuids, UID* puid = nullptr,unsigned attributes = 0);
     RESCODE intRemoveObj(UID);
 
     RESCODE intToggleAux(UID objid);
