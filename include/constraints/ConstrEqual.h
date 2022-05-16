@@ -2,6 +2,16 @@
 #define _CONSTREQUAL_H
 #include "IConstraint.h"
 namespace georis{
+
+class ConstrConst:public IConstraint{
+    paramProxy *_p1;
+public:
+    ConstrConst(paramProxy *p1):_p1(p1){};
+    double error()const{return 0;};
+    double grad(const paramProxy *)const{return 0;};
+    std::vector<paramProxy*> cparam()const{return {_p1};}
+};
+
 // Equal values
 class ConstrEqual:public IConstraint{
     paramProxy *_p1,*_p2;
