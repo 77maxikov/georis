@@ -634,7 +634,7 @@ RESCODE georis::Core::tryAddConstraint(ConstraintType type,const std::vector<UID
         else if ( uids.size() == 1 && grouped[OT_CIRCLE].size() == 1 ) {
             circrep* ci = dynamic_cast<circrep*>(m_objects[grouped[OT_CIRCLE][0]].obj);
             *ci->r->pval = parame;
-            constrInfo cinfo(type,{ET_CONST},{ new ConstrConst(ci->r)},uids,&_params.back());
+            constrInfo cinfo(type,{ET_CONST},{ new ConstrConst(ci->r) },uids);
 
             constrainEntities(uids, cinfo, puid);
             MOOLOG << "Core::tryAddConstraint - added radius" <<parame << " for circle (" <<  *(ci->center) <<","<< *(ci->r->pval) << ")"<< std::endl;
@@ -1044,12 +1044,14 @@ int georis::Core::solve(){
                 // Analyze for presense of equality constraints
                 std::vector< std::set<paramProxy*> > equalityGroups = cgroup.groupEqParams();
                 cgroup.linkEqualParams( equalityGroups );
-                for ( auto &eg:equalityGroups ){
+                /*
+                 * for ( auto &eg:equalityGroups ){
                     for ( auto pp: eg ){
                         MOOLOG << "pv " << pp->pval << " val "<< *pp->pval <<" or "<< pp->orig << " val "<< (*pp->orig) <<std::endl;
                     }
                     MOOLOG << "---------------" << std::endl;
                 }
+                */
                 std::vector<IConstraint*> errs;                
                 for ( auto &cgc: cgroup.constraints ){
                     // filter out all equal constraints
@@ -1130,10 +1132,10 @@ int georis::Core::solve(){
                             scaler(k) = 1;
                         else
                             scaler(k) = 1/scaler(k);
-                    //MOOLOG << "Core::solve - scaler " << std::endl << scaler.transpose() <<std::endl;
+                    MOOLOG << "Core::solve - scaler " << std::endl << scaler.transpose() <<std::endl;
 
                     ScaledOptFuncN scaledtarget(geotask.target, scaler);
-                    if (0){
+                    if (1){
                         geotask.target = &scaledtarget;
                         err = (*geotask.target)(geotask.x0);
                     }
@@ -1148,21 +1150,11 @@ int georis::Core::solve(){
                     geotask.stopcond.fevals = 10000;
 
                     //SolverCeres solver;
-
+                    //SolverLM solver;
                     //SolverNG solver;
-                    /*
-                if ( func.inDim() < func.outDim() ){
-                    SolverLM solver;
-                    solver.solve(geotask);
-                }
-                else{
-                    SolverNG solver;
-                    solver.solve(geotask);
-                }
-                */
                     SolverNReg solver;
-                    solver.solve(geotask);
 
+                    solver.solve(geotask);
 
                     for (size_t k = 0; k<vEqualityGroups.size(); ++k)
                         geotask.x0(k) = *vEqualityGroups[k].front()->pval;
@@ -1668,6 +1660,39 @@ void georis::Core::constrainEntities(const std::vector<UID>& objids, constrInfo&
 
             m_constrGroups[numGroup].unsolved = false;
         }
+    }
+    else if ( cinfo.type == CT_DIMENSION && !cinfo.errTypes.empty() && cinfo.errTypes.front() == ET_CONST ){ // Special case for circle with constant radius
+        assert( objids.size() == 1 );
+
+        auto objiter = m_objects.find( objids.front() );
+        assert( objiter != m_objects.end() );
+        // find constrgroup of current object or its parent
+        int numGroup = findConstrGroupByObjID( objids.front() );
+        if ( numGroup < 0 ) {// new constrgroup to add
+            m_constrGroups.push_back(constrGroup());
+            numGroup = m_constrGroups.size() - 1;
+        }
+
+        m_constrGroups[numGroup].constraints[constrid] = cinfo;
+
+        // Collect parameters to fix
+        std::vector<paramProxy*> objppar = cinfo.errors.front()->cparam();
+
+        // Make these params constant within a group and check if they are in eqgroups to add eqparam to constants
+        std::vector<std::set<paramProxy*> > eqgroups = m_constrGroups[numGroup].groupEqParams();
+
+        for ( auto pp: objppar ){
+            m_constrGroups[numGroup].constants.insert(pp);
+            for ( auto eqg: eqgroups ){
+                auto it = eqg.find(pp);
+                if ( it != eqg.end() ){
+                    for (auto eqp: eqg )
+                        m_constrGroups[numGroup].constants.insert(eqp);
+                }
+            }
+        }
+
+        m_constrGroups[numGroup].unsolved = true;
     }
     else{
         bool newGroupNeeded = true;
