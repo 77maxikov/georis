@@ -7,7 +7,7 @@ public:
     SolverNReg();
 
     virtual int solve(const SolveTask &task);
-    virtual void getSolution(v_type &best)const{best = _bestx;};
+    virtual void getSolution(v_type &best)const{best = m_bestx;};
     virtual void getBestVal(s_type &)const{};
 
     virtual void setParam(const std::valarray<double>&parm){};
@@ -16,8 +16,8 @@ public:
     virtual void getParam(std::valarray<int>&)const{};
 
 protected:
-	unsigned _fevals;
-	v_type _bestx;
+    size_t m_fevals;
+    v_type   m_bestx;
 };
 
 #endif // _SolverNReg_H

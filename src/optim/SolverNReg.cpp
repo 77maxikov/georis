@@ -6,13 +6,13 @@
 #include "mooLog.h"
 
 SolverNReg::SolverNReg() {
-    _fevals = 0;
+    m_fevals = 0;
 }
 int SolverNReg::solve(const SolveTask &task) {
     if (!(*task.target).hasJacob()) throw std::invalid_argument("SolverNReg::target function should provide Jacobian");
     v_type x1(task.x0);
-    _bestx = x1;
-    v_type fx1 = (*task.target)(x1);++_fevals;
+    m_bestx = x1;
+    v_type fx1 = (*task.target)(x1);++m_fevals;
 //    MOOLOG << "SolverNReg::solve - initial values: " << std::endl << fx1 << std::endl;
     unsigned flag = 0;
     v_type dx(x1.size());
@@ -20,7 +20,7 @@ int SolverNReg::solve(const SolveTask &task) {
     const double Hparam = 0.5;
 bool flag1 = true;
     while (1) {
-        if (_fevals > task.stopcond.fevals) {
+        if ( m_fevals > task.stopcond.fevals ) {
             flag |= OPTFLAG_FEVALS;
             break;
         }
@@ -59,7 +59,7 @@ bool flag1 = true;
         }
 
         v_type x2(x1 + dx);
-        v_type fx2 = (*task.target)(x2);++_fevals;
+        v_type fx2 = (*task.target)(x2);++m_fevals;
 //        MOOLOG << "fx2 "<< std::endl << fx2 << std::endl;
 
         if ( abs(fx1.norm() - fx2.norm()) < task.stopcond.tolf ) {
@@ -71,7 +71,7 @@ bool flag1 = true;
         if ( fx2.norm() < fx1.norm() ) {
             x1 = x2;
             fx1 = fx2;
-            _bestx = x1;
+            m_bestx = x1;
         }
         else{
 //           MOOLOG << "Line search "<<std::endl;
@@ -84,7 +84,7 @@ bool flag1 = true;
            while ( nLinsearchIter < maxLinsearchIter && !found ){
                 v_type x21 = x1 + alpha*dx;
                 v_type fx21 = (*task.target)(x21);
-                ++_fevals;                
+                ++m_fevals;
                 if ( fx21.norm() < bestnorm ){
                     found = true;
                     fx2 = fx21;
@@ -106,15 +106,14 @@ bool flag1 = true;
             }
             x1 = x2;
             fx1 = fx2;
-            _bestx = x1;
+            m_bestx = x1;
         }
 //        MOOLOG << "bestx " << std::endl << _bestx.transpose() << std::endl;
         MOOLOG  << "SolverNReg::solve: iter = " << iter <<  " err.norm = " << fx1.norm() << std::endl;
         ++iter;
 
     }
-MOOLOG << "SolverNReg::solve - finished with flag = " << flag << " fevals " << _fevals << std::endl;
-(*task.target)(_bestx);
+MOOLOG << "SolverNReg::solve - finished with flag = " << flag << " fevals " << m_fevals << std::endl;
     return 0;
 }
 
