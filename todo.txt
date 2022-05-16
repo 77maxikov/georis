@@ -1,6 +1,3 @@
-1. cmake build
-2. undo delete selection
-3. undo multipleconstraints
 4. angleround
 5. angletrim
 6. 3point rect
