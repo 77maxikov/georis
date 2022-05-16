@@ -26,7 +26,16 @@ enum ObjectType{
 
 enum CompositeType{
     COT_RECT,
-    COT_RECT3P
+    COT_RECT3P,
+    COT_LINESLOT,
+    COT_CIRCSLOT
+};
+
+enum TransformType{
+    TT_CHAMFER,
+    TT_FILLET,
+    TT_LINEARRAY,
+    TT_CIRCARRAY
 };
 
 enum ConstraintType{
