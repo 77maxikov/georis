@@ -10,6 +10,15 @@ protected:
     paramProxy *l11x,*l11y,*l12x,*l12y;
     paramProxy *l21x,*l21y,*l22x,*l22y;
 
+    mutable double a1x, a1y, a2x, a2y;
+
+    void prepare()const{
+        a1x = *l12x->pval - *l11x->pval;
+        a1y = *l12y->pval - *l11y->pval;
+        a2x = *l22x->pval - *l21x->pval;
+        a2y = *l22y->pval - *l21y->pval;
+    }
+
 };
 }
 #endif // _CONSTRL2L_H

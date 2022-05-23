@@ -1,42 +1,27 @@
 #include "ConstrL2LEqual.h"
-#include <cmath>
-#include <stdexcept>
 
 double georis::ConstrL2LEqual::error()const {
-    double a1x = *l12x->pval - *l11x->pval;
-    double a1y = *l12y->pval - *l11y->pval;
-    double a2x = *l22x->pval - *l21x->pval;
-    double a2y = *l22y->pval - *l21y->pval;
-
-    if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LEqual::not a line 1!");
-    if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LEqual::not a line 2!");
+    prepare();
     return a1x*a1x + a1y*a1y - a2x*a2x - a2y*a2y;
 }
-double georis::ConstrL2LEqual::grad(const paramProxy *var)const {
-    double a1x = *l12x->pval - *l11x->pval;
-    double a1y = *l12y->pval - *l11y->pval;
-    double a2x = *l22x->pval - *l21x->pval;
-    double a2y = *l22y->pval - *l21y->pval;
-
-    if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LEqual::not a line 1!");
-    if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LEqual::not a line 2!");
+georis::DiDelegate georis::ConstrL2LEqual::grad(const paramProxy *var){
 
     if (var == l11x)
-        return -2*a1x;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl11x>(this);
     if (var == l11y)
-        return -2*a1y;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl11y>(this);
     if (var == l12x)
-        return 2*a1x;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl12x>(this);
     if (var == l12y)
-        return 2*a1y;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl12y>(this);
     if (var == l21x)
-        return 2*a2x;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl21x>(this);
     if (var == l21y)
-        return 2*a2y;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl21y>(this);
     if (var == l22x)
-        return -2*a2x;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl22x>(this);
     if (var == l22y)
-        return -2*a2y;
-    return 0;
+        return georis::DiDelegate::from_method<georis::ConstrL2LEqual,&georis::ConstrL2LEqual::dl22y>(this);
+    return DiDelegate();
 }
 

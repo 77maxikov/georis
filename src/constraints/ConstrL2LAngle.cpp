@@ -8,61 +8,26 @@ georis::ConstrL2LAngle::ConstrL2LAngle(const georis::line2r &l1, const georis::l
     _angle = angle;
 }
 double georis::ConstrL2LAngle::error()const{
-    double a1x = *l12x->pval - *l11x->pval;
-    double a1y = *l12y->pval - *l11y->pval;
-    double a2x = *l22x->pval - *l21x->pval;
-    double a2y = *l22y->pval - *l21y->pval;
-
-    if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 1!");
-    if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 2!");
-
-    // Check if we have common point for lines
-    if ( l11x->pval == l22x->pval && l11y->pval == l22y->pval){
-        a2x *= -1; a2y *= -1;
-    }
-    if ( l12x->pval == l21x->pval && l12y->pval == l21y->pval){
-        a1x *= -1; a1y *= -1;
-    }
-    double c = a1x*a2x + a1y*a2y;
-    double s = a1x*a2y - a1y*a2x;
-
+    prepare();
     return atan2(s,c) - deg2rad(*_angle->pval);
 }
-double georis::ConstrL2LAngle::grad(const paramProxy *var)const{
-    double a1x = *l12x->pval - *l11x->pval;
-    double a1y = *l12y->pval - *l11y->pval;
-    double a2x = *l22x->pval - *l21x->pval;
-    double a2y = *l22y->pval - *l21y->pval;
-
-    if ( a1x*a1x + a1y*a1y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 1!");
-    if ( a2x*a2x + a2y*a2y < epsi*epsi ) throw std::runtime_error("ConstrL2LAngle::not a line 2!");
-
-    // Check if we have common point for lines
-    if ( l11x->pval == l22x->pval && l11y->pval == l22y->pval){
-        a2x *= -1; a2y *= -1;
-    }
-    if ( l12x->pval == l21x->pval && l12y->pval == l21y->pval){
-        a1x *= -1; a1y *= -1;
-    }
-    double c = a1x*a2x + a1y*a2y;
-    double s = a1x*a2y - a1y*a2x;
-
+georis::DiDelegate georis::ConstrL2LAngle::grad(const paramProxy *var){
     if (var == l11x)
-        return (-a2y*c + a2x*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl11x>(this);
     if (var == l11y)
-        return (a2x*c + a2y*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl11y>(this);
     if (var == l12x)
-        return (a2y*c - a2x*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl12x>(this);
     if (var == l12y)
-        return (-a2x*c - a2y*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl12y>(this);
     if (var == l21x)
-        return (a1y*c + a1x*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl21x>(this);
     if (var == l21y)
-        return (a1x*c + a1y*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl21y>(this);
     if (var == l22x)
-        return (-a1y*c - a1x*s)/(s*s + c*c);
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl22x>(this);
     if (var == l22y)
-        return (a1x*c - a1y*s)/(s*s + c*c);
-    return 0;
+        return georis::DiDelegate::from_method<georis::ConstrL2LAngle,&georis::ConstrL2LAngle::dl22y>(this);
+    return georis::DiDelegate();
 }
 

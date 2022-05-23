@@ -18,7 +18,6 @@ int SolverNReg::solve(const SolveTask &task) {
     v_type dx(x1.size());
     size_t iter = 0;
     const double Hparam = 0.5;
-bool flag1 = true;
     while (1) {
         if ( m_fevals > task.stopcond.fevals ) {
             flag |= OPTFLAG_FEVALS;
@@ -28,25 +27,22 @@ bool flag1 = true;
 //std::cout << "SolverNReg::solve - x = "<< std::endl << x1 << std::endl;
 //std::cout << "SolverNReg::solve - fx1  = " << fx1 <<", norm = "<< fx1.norm()<<std::endl;
 
-        m_type jacob = task.target->getJacob(x1);
+        spam_type jacob = task.target->getJacob(x1);
 //MOOLOG  << "SolverNReg::solve - Jacob:" << std::endl << jacob << std::endl;
         double lambda = sqrt(Hparam*(jacob.transpose()*fx1).norm());
 
-        m_type H = jacob.transpose()*jacob;
-        if ( flag1 ){ // Count zero elements
-            size_t nzeros = 0;
-            for (int r = 0; r < H.rows();++r)
-                for (int c = 0; c < H.cols(); ++c ){
-                    if ( abs(H(r,c)) < 1e-12 )
-                        ++nzeros;
-                }
-            MOOLOG << "SolverNReg::solve - sparsity: " << static_cast<double>(nzeros) / H.rows() / H.cols() << std::endl;
-            flag1 = false;
-        }
-        for (Eigen::Index k = 0;k< H.cols();++k)
-            H(k,k) += lambda;
+        spam_type H = jacob.transpose()*jacob;
 
-        dx = H.fullPivLu().solve(-jacob.transpose()*fx1);
+        for (Eigen::Index k = 0;k< H.cols();++k)
+            H.coeffRef(k,k) += lambda;
+        H.makeCompressed();
+
+        Eigen::SparseQR<spam_type,Eigen::COLAMDOrdering<int> > solver(H);
+        dx = solver.solve(-jacob.transpose()*fx1);
+
+        if ( solver.rank() == dx.size() ){
+            MOOLOG << "SolverNReg::solve RANK " << std::endl;
+        }
 
 //        MOOLOG << "dx = "<< std::endl << dx.transpose() << std::endl;
 

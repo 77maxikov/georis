@@ -8,7 +8,7 @@ class ConstrConst:public IConstraint{
 public:
     ConstrConst(paramProxy *p1):_p1(p1){};
     double error()const{return 0;};
-    double grad(const paramProxy *)const{return 0;};
+    DiDelegate grad(const paramProxy *){return DiDelegate();};
     std::vector<paramProxy*> cparam()const{return {_p1};}
 };
 
@@ -18,8 +18,11 @@ class ConstrEqual:public IConstraint{
 public:
     ConstrEqual(paramProxy *p1,paramProxy *p2):_p1(p1),_p2(p2){};
     double error()const;
-    double grad(const paramProxy *)const;
+    DiDelegate grad(const paramProxy *);
     std::vector<paramProxy*> cparam()const{return {_p1,_p2};}
+
+    constexpr double dp1(){ return 1; }
+    double dp2(){ return -1; }
 };
 // Mid value
 class ConstrMidVal:public IConstraint{
@@ -27,8 +30,12 @@ class ConstrMidVal:public IConstraint{
 public:
     ConstrMidVal(paramProxy *mid, paramProxy *p1,paramProxy *p2):_mid(mid),_p1(p1),_p2(p2){};
     double error()const;
-    double grad(const paramProxy *)const;
+    DiDelegate grad(const paramProxy *);
     std::vector<paramProxy*> cparam()const{return {_mid,_p1,_p2};}
+
+    constexpr double dmid(){return 2.0;}
+    constexpr double dp(){return -1.0;}
+
 };
 }
 #endif // _CONSTREQUAL_H

@@ -8,14 +8,7 @@ double georis::ConstrL2LOrtho::error()const{
     double a1y = *l12y->pval - *l11y->pval;
     double a2x = *l22x->pval - *l21x->pval;
     double a2y = *l22y->pval - *l21y->pval;
-/*
-    if ( a1x*a1x + a1y*a1y < epsi*epsi )
-        return _initialErr;
-    //throw std::runtime_error("ConstrL2LOrtho - not a line 1!");
-    if ( a2x*a2x + a2y*a2y < epsi*epsi )
-        return _initialErr;
-    //throw std::runtime_error("ConstrL2LOrtho - not a line 2!");
-  */
+
 	return a1x*a2x + a1y*a2y;
 }
 double georis::ConstrL2LOrtho::grad(const paramProxy *var)const{

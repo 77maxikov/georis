@@ -10,50 +10,23 @@ double georis::ConstrPP2LSym::error()const {
     double mpy = (*l12y->pval + *l11y->pval)/2;
     return (ay*(mpx - *l21x->pval) - ax*(mpy - *l21y->pval))/sqrt(ax*ax+ay*ay);
 }
-double georis::ConstrPP2LSym::grad(const paramProxy *var)const {
-    double ax = *l22x->pval - *l21x->pval;
-    double ay = *l22y->pval - *l21y->pval;
-    //double ppx = *l12x->pval - *l11x->pval;
-    //double ppy = *l12y->pval - *l11y->pval;
-    double mpx = (*l12x->pval + *l11x->pval)/2;
-    double mpy = (*l12y->pval + *l11y->pval)/2;
-    double d = sqrt(ax*ax + ay*ay);
-
-    if (var == l11x){
-        //return 0.5*ay - ax;
-        return 0.5*ay/d;
-    }
-    if (var == l11y){
-        //return -0.5*ax - ay;
-        return 0.5*(-ax)/d;
-    }
-    if (var == l12x){
-        //return 0.5*ay + ax;
-        return 0.5*( ay )/d;
-    }
-    if (var == l12y){
-        //return -0.5*ax + ay;
-        return 0.5*(-ax)/d;
-    }
-    if (var == l21x){
-        //return -ay + mpy - *l21y - ppx;
-        return (-*l22y->pval + mpy)/d + (ay*(mpx - *l21x->pval)- ax *(mpy - *l21y->pval))/d/d/d*ax;
-
-    }
-    if (var == l21y){
-        //return -mpx + *l21x + ax - ppy;
-        return (-mpx + *l22x->pval)/d + (ay*(mpx - *l21x->pval)-ax*(mpy-*l21y->pval))/d/d/d*ay;
-
-    }
-    if (var == l22x){
-        //return -mpy + *l21y + ppx;
-        return (-mpy + *l21y->pval)/d - (ay*(mpx-*l21x->pval)-ax*(mpy-*l21y->pval))/d/d/d*ax;
-    }
-    if (var == l22y){
-        //return mpx - *l21x + ppy;
-        return (mpx - *l21x->pval)/d - (ay*(mpx-*l21x->pval)-ax*(mpy-*l21y->pval))/d/d/d*ay;
-    }
-
-    return 0;
+georis::DiDelegate georis::ConstrPP2LSym::grad(const paramProxy *var) {
+    if (var == l11x)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl11x>(this);
+    if (var == l11y)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl11y>(this);
+    if (var == l12x)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl12x>(this);
+    if (var == l12y)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl12y>(this);
+    if (var == l21x)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl21x>(this);
+    if (var == l21y)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl21y>(this);
+    if (var == l22x)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl22x>(this);
+    if (var == l22y)
+        return georis::DiDelegate::from_method<georis::ConstrPP2LSym,&georis::ConstrPP2LSym::dl22y>(this);
+    return georis::DiDelegate();
 }
 
