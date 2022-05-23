@@ -3,7 +3,6 @@
 6. 3point rect
 7. right n-angle
 8. slots
-9. sparse solver
 10. rank in solver
 11. ps export
 12. pdf export
