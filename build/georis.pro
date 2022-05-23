@@ -29,7 +29,6 @@ SOURCES += ../src/test.cpp \
    ../src/constraints/ConstrL2L.cpp \
    ../src/constraints/ConstrL2LAngle.cpp \
    ../src/constraints/ConstrL2LEqual.cpp \
-   ../src/constraints/ConstrL2LOrtho.cpp \
     ../src/constraints/ConstrL2LOrtho2.cpp \
    ../src/constraints/ConstrL2LParal.cpp \
    ../src/constraints/ConstrP2LDist.cpp \
@@ -60,7 +59,6 @@ HEADERS  += \
     ../include/constraints/ConstrL2L.h \
     ../include/constraints/ConstrL2LAngle.h \
     ../include/constraints/ConstrL2LEqual.h \
-    ../include/constraints/ConstrL2LOrtho.h \
     ../include/constraints/ConstrL2LOrtho2.h \
     ../include/constraints/ConstrL2LParal.h \
     ../include/constraints/ConstrP2LDist.h \
@@ -87,7 +85,6 @@ HEADERS  += \
     ../include/optim/SolverLM.h \
     ../include/optim/SolverNG.h \
     ../include/optim/SolverNReg.h \
-    ../include/optim/ap.h \
     ../include/optim/common_optim.h \
     ../include/optim/line_search.h \
     ../include/paramProxy.h \
