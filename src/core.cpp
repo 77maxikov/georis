@@ -874,29 +874,32 @@ RESCODE georis::Core::removeConstraint(UID id2rem) {
     if ( numGroup == m_constrGroups.size() )
         return RC_NO_OBJ;
 
-    // For constraints with ET_EQ_PARAM errors we should unlink param dependency
     std::vector<std::set<paramProxy*> > equalityGroups =  m_constrGroups[numGroup].groupEqParams();
-    for ( size_t k = 0; k < cit->second.errTypes.size(); ++k ){
-        if ( cit->second.type == CT_FIX ){
-            // For all fixed params to remove equal params from constants also
-            for ( auto objid : cit->second.objs ){
-                int numGroup = findConstrGroupByObjID(objid);
-                assert(numGroup >= 0);
-                std::vector<paramProxy*> ppar;
-                m_objects[objid].obj->getParamInfo(ppar);
-                std::vector<std::set<paramProxy*> > eqgroups = m_constrGroups[numGroup].groupEqParams();
-                for ( auto ppa: ppar ){
-                    for ( auto eqg: eqgroups ){
-                        if ( eqg.find(ppa) != eqg.end() ){
-                            for ( auto eqppa: eqg )
-                                m_constrGroups[numGroup].constants.erase(eqppa);
-                        }
-                    }
-                    m_constrGroups[numGroup].constants.erase(ppa);
-                }
-            }
 
+
+    // For CT_FIXED constraint remove constant parameters from group
+    if ( cit->second.type == CT_FIX ){
+        // For all fixed params remove equal params from constants also
+        for ( auto objid : cit->second.objs ){
+            int numGroup = findConstrGroupByObjID(objid);
+            assert(numGroup >= 0);
+            std::vector<paramProxy*> ppar;
+            m_objects[objid].obj->getParamInfo(ppar);
+            for ( auto ppa: ppar ){
+                for ( auto eqg: equalityGroups ){
+                    if ( eqg.find(ppa) != eqg.end() ){
+                        for ( auto eqppa: eqg )
+                            m_constrGroups[numGroup].constants.erase(eqppa);
+                    }
+                }
+                m_constrGroups[numGroup].constants.erase(ppa);
+            }
+            m_objects[objid].obj->fixed = false;
         }
+    }
+
+    // For constraints with ET_EQ_PARAM errors we should unlink param dependency
+    for ( size_t k = 0; k < cit->second.errTypes.size(); ++k ){
         if ( cit->second.errTypes[k] == ET_EQ_PARAM ){
             std::vector<paramProxy*> eqpara = cit->second.errors[k]->cparam();
             paramProxy* p0 = eqpara[0];
