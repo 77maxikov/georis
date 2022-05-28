@@ -88,6 +88,7 @@ int georis::GeFLTKVisualizer::handle(int event) {
 
 void georis::GeFLTKVisualizer::setInputMode(InputMode mode){
     //MOOLOG << "GeFLTKVisualizer::setInputMode with mode = " << mode << std::endl;
+    m_controller->resetSelection();
     _glWindow->setMode(mode);
 
     for (auto it : _modebuttons )
