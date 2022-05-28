@@ -68,7 +68,13 @@ void georis::Controller::updateView() {
             MOOLOG << "Controller::updateView no such obj with uid " << it.first << std::endl;
             return;
         }
-        if ( freedeg == 0 ) it.second.status |= MODE_FIXED;
+        if ( freedeg == 0 ) {
+            //MOOLOG << "Controller::updateView obj with uid " << it.first << " is fixed"<< std::endl;
+            it.second.status |= MODE_FIXED;
+        }
+        else{
+            it.second.status &= ~MODE_FIXED;
+        }
         m_ui->drawObject(objtype,parame,it.second.status);
     }
     for ( auto &c: m_constrs ){
@@ -116,8 +122,6 @@ void georis::Controller::createObject(georis::ObjectType type, const std::vector
     }
     else{
         //MOOLOG << "Controller::createObject added parent with UID " << uid << std::endl;
-
-
 
         std::vector<georis::ObjectType> types(newids.size()); types[0] = type;
         std::vector<std::vector<double> >  params(newids.size()); params[0] = parame;
@@ -593,7 +597,13 @@ RESCODE georis::Controller::intAddConstraint(ConstraintType type,
         andi->idend1 = objchi1[1];
         andi->idbeg2 = objchi2[0];
         andi->idend2 = objchi2[1];
-        andi->dimr = 1.0;
+        // Calculate radius
+        std::vector<double> l1;
+        m_core.getObjParam(objects[0],l1);
+        std::vector<double> l2;
+        m_core.getObjParam(objects[1],l2);
+        andi->dimr = std::sqrt(std::min((l1[0]-l1[2])*(l1[0]-l1[2]) + (l1[1]-l1[3])*(l1[1]-l1[3]),
+                 (l2[0]-l2[2])*(l2[0]-l2[2]) + (l2[1]-l2[3])*(l2[1]-l2[3])))/3;
         andi->dimdir = 0;
         andi->core = &m_core;
         cinf.sd.reset(andi);
