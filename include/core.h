@@ -103,7 +103,8 @@ private:
 
         std::vector<std::set<paramProxy*> > groupEqParams()const;
         void operator+=(const constrGroup&);
-        void linkEqualParams(std::vector<std::set<paramProxy*> >&);
+        void updateConstants(const std::vector<std::set<paramProxy*> >&);
+        RESCODE linkEqualParams(std::vector<std::set<paramProxy*> >&);
         void unlinkEqualParams(std::vector<std::set<paramProxy*> >&);
         void updateEqualParamOrigVals(std::vector<std::set<paramProxy*> >&);
 
